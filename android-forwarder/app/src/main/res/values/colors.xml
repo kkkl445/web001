@@ -1,0 +1,7 @@
+<resources>
+    <color name="brand_blue">#1E88E5</color>
+    <color name="brand_blue_dark">#1565C0</color>
+    <color name="green_ok">#2E7D32</color>
+    <color name="red_warn">#C62828</color>
+    <color name="gray_bg">#F2F3F5</color>
+</resources>

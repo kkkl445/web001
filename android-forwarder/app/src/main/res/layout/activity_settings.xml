@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/gray_bg">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="参数设置"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="#222222" />
+
+        <TextView style="@style/Lbl" android:text="目标 App 包名（G平台）" />
+        <EditText android:id="@+id/etTargetPkg" style="@style/Inp"
+            android:hint="com.yunzhijia.gree" />
+        <TextView style="@style/Hint"
+            android:text="不确定就先用默认。发送失败时日志会显示实际包名，按那个改。" />
+
+        <TextView style="@style/Lbl" android:text="目标会话名" />
+        <EditText android:id="@+id/etChatName" style="@style/Inp"
+            android:hint="文件传输助手" />
+
+        <TextView style="@style/Lbl" android:text="发送按钮文字（逗号隔开，可多填几个）" />
+        <EditText android:id="@+id/etSendLabels" style="@style/Inp"
+            android:hint="发送,Send" />
+
+        <TextView style="@style/Lbl" android:text="转发文本模板" />
+        <EditText android:id="@+id/etTemplate" style="@style/Inp"
+            android:hint="【微信】{sender}：{content}" />
+        <TextView style="@style/Hint"
+            android:text="{sender} 会替换成发件人，{content} 替换成消息内容。" />
+
+        <TextView style="@style/Lbl" android:text="微信包名（一般不用改）" />
+        <EditText android:id="@+id/etWechatPkg" style="@style/Inp"
+            android:hint="com.tencent.mm" />
+
+        <Button
+            android:id="@+id/btnSave"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="保存" />
+
+        <Button
+            android:id="@+id/btnReset"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="恢复默认值" />
+    </LinearLayout>
+</ScrollView>
