@@ -21,8 +21,14 @@
         <TextView style="@style/Lbl" android:text="目标 App 包名（G平台）" />
         <EditText android:id="@+id/etTargetPkg" style="@style/Inp"
             android:hint="com.yunzhijia.gree" />
+        <Button
+            android:id="@+id/btnPickApp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="📱 从已安装应用里选择（推荐）" />
         <TextView style="@style/Hint"
-            android:text="不确定就先用默认。发送失败时日志会显示实际包名，按那个改。" />
+            android:text="不确定包名就点上面的按钮，在列表里找到 G平台 点一下即可。" />
 
         <TextView style="@style/Lbl" android:text="目标会话名" />
         <EditText android:id="@+id/etChatName" style="@style/Inp"
