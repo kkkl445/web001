@@ -24,6 +24,7 @@ class ForwarderAccessibilityService : AccessibilityService() {
     @Volatile
     private var busy = false
     private var currentText: String = ""
+    private var targetPkg: String = ""
 
     // 各阶段重试上限
     private val openChatMaxAttempts = 20
@@ -58,34 +59,42 @@ class ForwarderAccessibilityService : AccessibilityService() {
         val task = ForwardQueue.poll() ?: return
         busy = true
         currentText = task.text
+        targetPkg = Prefs.getTargetPkg(this)
         LogStore.add("开始发送：${task.text}")
 
         copyToClipboard(task.text)
 
-        val targetPkg = Prefs.getTargetPkg(this)
-        val launch = packageManager.getLaunchIntentForPackage(targetPkg)
-        if (launch == null) {
-            fail("打不开目标 App（包名 $targetPkg 不对？请到设置里修改）")
-            return
-        }
-        launch.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-        try {
-            startActivity(launch)
-        } catch (t: Throwable) {
-            fail("启动目标 App 失败：${t.message}")
+        if (!launchTarget()) {
+            fail("打不开目标 App（包名 $targetPkg 不对？请到设置里用「从已安装应用里选择」）")
             return
         }
         ensureInputThenFill(0)
     }
 
+    /** 把目标 App 拉到前台，返回是否成功发起。 */
+    private fun launchTarget(): Boolean {
+        val launch = packageManager.getLaunchIntentForPackage(targetPkg) ?: return false
+        launch.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        return try {
+            startActivity(launch)
+            true
+        } catch (t: Throwable) {
+            false
+        }
+    }
+
     /** 反复检查，直到出现输入框；若在列表页则先点开会话。 */
     private fun ensureInputThenFill(attempt: Int) {
         handler.postDelayed({
-            val targetPkg = Prefs.getTargetPkg(this)
             val root = rootInActiveWindow
             if (root == null || root.packageName?.toString() != targetPkg) {
-                if (attempt < openChatMaxAttempts) ensureInputThenFill(attempt + 1)
-                else fail("目标 App 界面未就绪（当前包名 ${root?.packageName}）", root)
+                if (attempt < openChatMaxAttempts) {
+                    // 前台被别的 App（如微信）占着时，隔几次重新把目标 App 拉到前台
+                    if (attempt % 6 == 5) launchTarget()
+                    ensureInputThenFill(attempt + 1)
+                } else {
+                    fail("目标 App 界面未就绪（当前包名 ${root?.packageName}）", root)
+                }
                 return@postDelayed
             }
 

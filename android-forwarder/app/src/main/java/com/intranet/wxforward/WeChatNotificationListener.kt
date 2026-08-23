@@ -39,17 +39,20 @@ class WeChatNotificationListener : NotificationListenerService() {
         // 过滤微信的汇总通知，例如标题「微信」内容「[3条]xxx」
         if (title == "微信" && text.contains("条")) return
 
+        // 去掉微信未读计数前缀，如 "[2条]" "[99+条]"
+        val cleaned = text.replace(Regex("^\\[\\d+\\+?条]"), "").trim()
+
         // 群消息内容常见格式 "张三: 你好"，此时真正的发件人在冒号前。
         var sender = title
-        var content = text
-        val colon = indexOfColon(text)
+        var content = cleaned
+        val colon = indexOfColon(cleaned)
         if (colon in 1..20) {
-            val maybeSender = text.substring(0, colon).trim()
-            val maybeContent = text.substring(colon + 1).trim()
+            val maybeSender = cleaned.substring(0, colon).trim()
+            val maybeContent = cleaned.substring(colon + 1).trim()
             if (maybeSender.isNotEmpty() && maybeContent.isNotEmpty()) {
-                // 群聊：标题是群名，发件人在内容里
-                sender = "$title / $maybeSender"
                 content = maybeContent
+                // 群聊：标题是群名，发件人在内容里；单聊带计数时发件人=标题，不重复
+                sender = if (maybeSender == title) title else "$title / $maybeSender"
             }
         }
 
