@@ -61,7 +61,14 @@ class MainActivity : AppCompatActivity() {
         val a11yOk = isAccessibilityEnabled()
         val whitelist = Prefs.getWhitelist(this)
 
+        val version = try {
+            packageManager.getPackageInfo(packageName, 0).versionName
+        } catch (_: Exception) {
+            "?"
+        }
+
         val sb = StringBuilder()
+        sb.append("📌 当前版本：$version\n")
         sb.append(if (notifOk) "✅ 微信通知读取权限：已开启\n" else "❌ 微信通知读取权限：未开启（点①）\n")
         sb.append(if (a11yOk) "✅ 无障碍自动发送权限：已开启\n" else "❌ 无障碍自动发送权限：未开启（点②）\n")
         sb.append("白名单联系人：${whitelist.size} 个\n")
