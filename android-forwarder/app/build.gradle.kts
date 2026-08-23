@@ -11,8 +11,8 @@ android {
         applicationId = "com.intranet.wxforward"
         minSdk = 24
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.2-应用选择器"
+        versionCode = 4
+        versionName = "1.3-测试直发"
     }
 
     buildTypes {

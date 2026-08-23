@@ -53,7 +53,8 @@ class ForwarderAccessibilityService : AccessibilityService() {
 
     private fun processNext() {
         if (busy) return
-        if (!Prefs.getEnabled(this)) return
+        // 队列里的任务一律尝试发送。是否转发微信消息由通知监听端的总开关控制，
+        // 这样「发测试消息」即使总开关没开也能验证发送链路。
         val task = ForwardQueue.poll() ?: return
         busy = true
         currentText = task.text
