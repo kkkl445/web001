@@ -25,15 +25,24 @@ class WeChatNotificationListener : NotificationListenerService() {
     }
 
     private fun handle(sbn: StatusBarNotification) {
-        if (!Prefs.getEnabled(this)) return
-
-        val wechatPkg = Prefs.getWechatPkg(this)
-        if (sbn.packageName != wechatPkg) return
-
+        val pkg = sbn.packageName
         val extras = sbn.notification?.extras ?: return
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
         val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
 
+        // 反向：G平台 文件传输助手 → 微信自动回复
+        if (Prefs.getReverseEnabled(this) && pkg == Prefs.getTargetPkg(this)) {
+            handleReverse(title, text)
+            return
+        }
+
+        // 正向：微信 → G平台
+        if (!Prefs.getEnabled(this)) return
+        if (pkg != Prefs.getWechatPkg(this)) return
+        handleWeChat(title, text)
+    }
+
+    private fun handleWeChat(title: String, text: String) {
         if (title.isEmpty() || text.isEmpty()) return
 
         // 过滤微信的汇总通知，例如标题「微信」内容「[3条]xxx」
@@ -76,6 +85,60 @@ class WeChatNotificationListener : NotificationListenerService() {
         val msg = Prefs.formatMessage(this, sender, content)
         LogStore.add("命中白名单，入队：$msg")
         ForwardQueue.enqueue(msg, now)
+    }
+
+    /**
+     * 处理来自 G平台 的通知，识别模板「回复 张三 好的收到」。
+     * 第一阶段：只记录日志、解析出目标和内容，暂不真正发微信。
+     */
+    private fun handleReverse(title: String, text: String) {
+        if (text.isEmpty()) return
+
+        // 诊断：把收到的 G平台 通知都记下来，确认触发是否可行
+        LogStore.add("【G平台通知】$title ｜ $text")
+
+        val cleaned = text.replace(Regex("^\\[\\d+\\+?条]"), "").trim()
+        // 群/助手通知可能是 "文件传输助手: 回复 张三 内容"，去掉冒号前缀
+        val body = run {
+            val c = indexOfColon(cleaned)
+            if (c in 1..20) cleaned.substring(c + 1).trim() else cleaned
+        }
+
+        val keyword = Prefs.getReplyKeyword(this)
+        if (!body.startsWith(keyword)) return
+
+        val after = body.removePrefix(keyword).trim()
+        val sp = firstSpace(after)
+        if (sp <= 0) {
+            LogStore.add("⚠️ 指令格式不对，应为「$keyword 对方名字 内容」")
+            return
+        }
+        val target = after.substring(0, sp).trim()
+        val content = after.substring(sp + 1).trim()
+        if (target.isEmpty() || content.isEmpty()) {
+            LogStore.add("⚠️ 指令缺少对方名字或内容")
+            return
+        }
+
+        // 去重
+        val now = System.currentTimeMillis()
+        val dedupKey = "R|$target|$content"
+        val last = recent[dedupKey]
+        if (last != null && now - last < 5000) return
+        recent[dedupKey] = now
+
+        LogStore.add("识别到回复指令 → 给【$target】发送：$content（第一阶段仅识别，暂不实际发送）")
+        // 第二阶段将在此处把「微信自动回复任务」入队
+    }
+
+    private fun firstSpace(s: String): Int {
+        val a = s.indexOf(' ')
+        val b = s.indexOf('　') // 全角空格
+        return when {
+            a == -1 -> b
+            b == -1 -> a
+            else -> minOf(a, b)
+        }
     }
 
     private fun indexOfColon(s: String): Int {

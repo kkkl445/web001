@@ -15,6 +15,10 @@ object Prefs {
     private const val KEY_SEND_LABELS = "send_labels"
     private const val KEY_TEMPLATE = "template"
     private const val KEY_WECHAT_PKG = "wechat_pkg"
+    private const val KEY_REVERSE_ENABLED = "reverse_enabled"
+    private const val KEY_REPLY_KEYWORD = "reply_keyword"
+
+    const val DEFAULT_REPLY_KEYWORD = "回复"
 
     // G平台（云之家二次开发）默认包名。若不对，可在设置里改。
     const val DEFAULT_TARGET_PKG = "com.yunzhijia.gree"
@@ -28,6 +32,16 @@ object Prefs {
 
     fun getEnabled(ctx: Context) = sp(ctx).getBoolean(KEY_ENABLED, false)
     fun setEnabled(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean(KEY_ENABLED, v).apply()
+
+    fun getReverseEnabled(ctx: Context) = sp(ctx).getBoolean(KEY_REVERSE_ENABLED, false)
+    fun setReverseEnabled(ctx: Context, v: Boolean) =
+        sp(ctx).edit().putBoolean(KEY_REVERSE_ENABLED, v).apply()
+
+    fun getReplyKeyword(ctx: Context): String =
+        sp(ctx).getString(KEY_REPLY_KEYWORD, DEFAULT_REPLY_KEYWORD)!!.ifBlank { DEFAULT_REPLY_KEYWORD }
+
+    fun setReplyKeyword(ctx: Context, v: String) =
+        sp(ctx).edit().putString(KEY_REPLY_KEYWORD, v.trim()).apply()
 
     /** 白名单：发件人名字集合（匹配微信通知标题）。 */
     fun getWhitelist(ctx: Context): MutableSet<String> {

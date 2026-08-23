@@ -14,6 +14,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var tvStatus: TextView
     private lateinit var switchEnabled: SwitchCompat
+    private lateinit var switchReverse: SwitchCompat
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -21,10 +22,15 @@ class MainActivity : AppCompatActivity() {
 
         tvStatus = findViewById(R.id.tvStatus)
         switchEnabled = findViewById(R.id.switchEnabled)
+        switchReverse = findViewById(R.id.switchReverse)
 
         switchEnabled.setOnCheckedChangeListener { _, checked ->
             Prefs.setEnabled(this, checked)
             LogStore.add(if (checked) "转发已开启" else "转发已关闭")
+        }
+        switchReverse.setOnCheckedChangeListener { _, checked ->
+            Prefs.setReverseEnabled(this, checked)
+            LogStore.add(if (checked) "反向自动回复已开启" else "反向自动回复已关闭")
         }
 
         findViewById<Button>(R.id.btnNotifPerm).setOnClickListener {
@@ -53,6 +59,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         switchEnabled.isChecked = Prefs.getEnabled(this)
+        switchReverse.isChecked = Prefs.getReverseEnabled(this)
         refreshStatus()
     }
 
