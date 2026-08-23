@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -44,10 +44,24 @@ jobs:
         run: ./gradlew assembleDebug --no-daemon --stacktrace
         working-directory: android-forwarder
 
-      - name: 上传 APK 产物
+      - name: 重命名 APK
+        run: cp android-forwarder/app/build/outputs/apk/debug/app-debug.apk wx-forward.apk
+
+      - name: 上传 APK 产物（备用，会过期）
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
-          path: android-forwarder/app/build/outputs/apk/debug/app-debug.apk
+          path: wx-forward.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: 发布到 Releases（永久下载链接，推荐用这个）
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-latest
+          name: 最新 APK（微信内网转发）
+          body: |
+            手机浏览器直接点下面的 wx-forward.apk 即可下载安装。
+            每次代码更新后这里都会自动替换为最新版本。
+          files: wx-forward.apk
+          make_latest: "true"
