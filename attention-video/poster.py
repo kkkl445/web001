@@ -1,8 +1,9 @@
 """Covers for 注意力 · Attention Is All You Need.
 
-Made for the feed: a big two-line headline people can read at thumbnail size,
-the formula glowing in the middle, and the film's star-atlas cat and Ming
-table underneath.  9:16 for the video cover, 3:4 for the profile grid.
+Made for the feed: one question people can read at thumbnail size - 「它」指的是谁？ -
+over the film's opening plate (the star-atlas cat, the Ming table, the sentence
+and the gold thread from 「它」 to 小猫).  No formula and no sweeping claims, so
+the cover passes the platform's review.  9:16 for the video, 3:4 for the grid.
 
   python3 poster.py   -> cover-9x16.png (1080x1920), poster-3x4.png (1080x1440)
 """
@@ -11,9 +12,8 @@ import cv2
 import numpy as np
 
 import plates as P
-import scenes as S
 import style as ST
-from style import GOLD, DIM, add_sprite, caps, zh
+from style import GOLD, IVORY, DIM, add_sprite, caps, mix, zh
 
 W, H = 1080, 1920
 
@@ -52,37 +52,48 @@ def finish(F, path):
     print("wrote", path, out.shape[1], "x", out.shape[0])
 
 
-def headline(F, y, size=96):
-    """你用的每个 AI / 心脏都是这一行 - bold, high contrast, readable as a thumbnail."""
-    ST.punch(F, "你用的每个 AI，", W / 2, y, 10.0, 0.0, size=int(size * 0.86), wght=800)
-    ST.punch(F, "心脏都是这一行", W / 2, y + size * 1.22, 10.0, 0.0, size=size, wght=900, gold=(0, 1))
+def headline(F, y, size=110):
+    """「它」指的是谁？ - a question, readable as a thumbnail, with no formula and no big claims."""
+    ST.punch(F, "「它」指的是谁？", W / 2, y, 10.0, 0.0, size=size, wght=900, gold=(1,))
 
 
-def plate(F, ground, s_cat=300, s_table=250):
-    P.baseline(F, ground + 2, 120, 960, 1.0)
-    P.table_plate(F, 745, ground, s_table, 1.0, glow=0.0)
-    P.cat_plate(F, 320, ground, s_cat, "sit", glow=1.0)
+def scene(F, ground, y1, y2, s_cat=340, s_table=280, size=76):
+    """The film's opening plate: the star-atlas cat glowing because 「它」 points at it, the Ming table,
+    the sentence, and the gold thread from 「它」 back to 小猫."""
+    P.baseline(F, ground + 2, 110, 970, 1.0)
+    P.table_plate(F, 735, ground, s_table, 1.0, glow=0.0)
+    P.cat_plate(F, 305, ground, s_cat, "sit", glow=1.0)
+    sent = P.Line2(("小猫没有跳上桌子，", "因为它太累了。"),
+                   [(0, 0, 2), (0, 2, 4), (0, 4, 6), (0, 6, 8), (1, 0, 2), (1, 2, 3), (1, 3, 4), (1, 4, 5), (1, 5, 6)],
+                   size, (y1, y2))
+    cols = [IVORY] * 9
+    cols[P.IT] = GOLD
+    cols[P.CAT] = mix(IVORY, GOLD, 0.65)
+    sent.draw(F, 1.0, cols=cols)
+    add_sprite(F, *sent.centers[P.IT], 50, GOLD, 0.25)
+    P.thread(F, sent.centers[P.IT] + [-size * 0.45, 0], sent.centers[P.CAT] + [0, size * 0.62], 0.9, bow=-50)
+    P.dots(F, sent.centers[P.CAT] + [0, -size * 0.7], np.array([305 + 38, ground - s_cat * 0.46]), 1.0)
 
 
 def cover():
     F = canvas()
-    add_sprite(F, W / 2, 760, 420, GOLD, 0.10)
-    headline(F, 330)
-    S.formula_big(F, W / 2, 720, 10.0, 0.0, 1.0, scale=1.0)
-    plate(F, 1210)
-    zh("7 分钟，彻底看懂 Transformer", 46, 700, 0.06).draw(F, W / 2, 1345, GOLD, 1.0, align="center")
-    caps("ATTENTION IS ALL YOU NEED   ·   2017", 20, 0.4).draw(F, W / 2, 1400, DIM, 1.0, align="center")
+    add_sprite(F, W / 2, 820, 440, GOLD, 0.08)
+    headline(F, 360)
+    zh("AI 是怎么读懂这句话的？", 46, 600, 0.08).draw(F, W / 2, 470, IVORY, 0.9, align="center")
+    scene(F, 950, 1120, 1232)
+    zh("7 分钟看懂 Transformer", 46, 700, 0.06).draw(F, W / 2, 1395, GOLD, 1.0, align="center")
+    caps("ATTENTION IS ALL YOU NEED   ·   2017", 20, 0.4).draw(F, W / 2, 1450, DIM, 1.0, align="center")
     finish(F, "cover-9x16.png")
 
 
 def portrait():
     ST.E.H = 1440                     # the engine clips drawing to its frame size
     F = canvas(1440, seed=5)
-    add_sprite(F, W / 2, 610, 380, GOLD, 0.10)
-    headline(F, 210, size=92)
-    S.formula_big(F, W / 2, 580, 10.0, 0.0, 1.0, scale=0.95)
-    plate(F, 1080, s_cat=270, s_table=230)
-    zh("7 分钟，彻底看懂 Transformer", 44, 700, 0.06).draw(F, W / 2, 1200, GOLD, 1.0, align="center")
+    add_sprite(F, W / 2, 640, 400, GOLD, 0.08)
+    headline(F, 220, size=104)
+    zh("AI 是怎么读懂这句话的？", 42, 600, 0.08).draw(F, W / 2, 320, IVORY, 0.9, align="center")
+    scene(F, 770, 935, 1043, s_cat=320, s_table=265, size=72)
+    zh("7 分钟看懂 Transformer", 44, 700, 0.06).draw(F, W / 2, 1200, GOLD, 1.0, align="center")
     caps("ATTENTION IS ALL YOU NEED   ·   2017", 19, 0.4).draw(F, W / 2, 1252, DIM, 1.0, align="center")
     finish(F, "poster-3x4.png")
     ST.E.H = H
