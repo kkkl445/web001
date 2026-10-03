@@ -16,8 +16,11 @@ E = importlib.util.module_from_spec(_spec)
 sys.modules["engine"] = E
 _spec.loader.exec_module(E)
 E.FONT_DIR = ROOT / "fonts"
+E.H = 864                      # 2.22 : 1, the reference film's frame
 
 W, H = E.W, E.H
+CY = H // 2
+SUB_ZH, SUB_EN = 786, 820
 T, R, Stroke, blend, add_light, add_sprite, blur = E.T, E.R, E.Stroke, E.blend, E.add_light, E.add_sprite, E.blur
 ramp, smooth, ease_out, ease_in_out, ease_in, window, lerp, mix = (E.ramp, E.smooth, E.ease_out, E.ease_in_out,
                                                                   E.ease_in, E.window, E.lerp, E.mix)
@@ -40,10 +43,10 @@ def make_background(seed=4):
     yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
     F = np.empty((H, W, 3), np.float32)
     F[:] = rgb("030407")
-    d = ((xx - 960) / 1050) ** 2 + ((yy - 500) / 640) ** 2
+    d = ((xx - 960) / 1050) ** 2 + ((yy - 400) / 560) ** 2
     F += (rgb("0b1322") - rgb("030407")) * np.exp(-d * 1.4)[..., None]
     stars = np.zeros((H, W), np.float32)
-    n = 900
+    n = 720
     sx, sy = rng.uniform(0, W, n), rng.uniform(0, H, n)
     br = rng.power(4, n) * 0.22 + 0.02
     for x, y, b in zip(sx, sy, br):
@@ -74,7 +77,7 @@ def make_grain(n=8, amp=0.009, seed=8):
 
 def finalize(F, vig, grain, bloom=1.0):
     if bloom > 0:
-        small = cv2.resize(F, (480, 270), interpolation=cv2.INTER_AREA)
+        small = cv2.resize(F, (W // 4, H // 4), interpolation=cv2.INTER_AREA)
         br = np.maximum(small - 0.42, 0)
         b = cv2.GaussianBlur(br, (0, 0), 2.5) * 0.55 + cv2.GaussianBlur(br, (0, 0), 11) * 0.75
         F += cv2.resize(b, (W, H), interpolation=cv2.INTER_LINEAR) * bloom
@@ -134,8 +137,41 @@ def hairline(F, x0, y, x1, color, a, th=1):
 
 # ---------------------------------------------------------------- type ---
 
+_SUPER = set("⁰¹²³⁴⁵⁶⁷⁸⁹⁻")
+_mixed = {}
+
+
 def serif(s, size, wght=400, tracking=0.0):
-    return T(s, "serif", size, wght, tracking=tracking)
+    """Serif CJK text; superscript digits (missing from the CJK face) come from STIX."""
+    if not _SUPER.intersection(s):
+        return T(s, "serif", size, wght, tracking=tracking)
+    key = (s, size, wght, tracking)
+    if key not in _mixed:
+        runs, cur, sup = [], "", None
+        for ch in s:
+            k = ch in _SUPER
+            if sup is not None and k != sup:
+                runs.append((cur, "stix" if sup else "serif", size, None if sup else wght))
+                cur = ""
+            cur, sup = cur + ch, k
+        runs.append((cur, "stix" if sup else "serif", size, None if sup else wght))
+        _mixed[key] = E.Text(runs, tracking, per_char=True)
+    return _mixed[key]
+
+
+def sci(mant, exp, size, prefix=""):
+    """'3.6 × 10^38' as STIX runs; returns (base Text, exponent Text)."""
+    base = T(f"{prefix}{mant} × 10" if mant else f"{prefix}10", "stix", size, None, per_char=False)
+    return base, T(str(exp).replace("-", "−"), "stix", int(size * 0.6), None, per_char=False)
+
+
+def draw_sci(F, mant, exp, x, y, size, color, a=1.0, align="left", prefix=""):
+    base, ex = sci(mant, exp, size, prefix)
+    w = base.width + 3 + ex.width
+    x0 = x - w / 2 if align == "center" else x - w if align == "right" else x
+    base.draw(F, x0, y, color, a)
+    ex.draw(F, x0 + base.width + 3, y - size * 0.42, color, a)
+    return w
 
 
 def caps(s, size=12, tracking=0.32):
@@ -225,8 +261,9 @@ def subtitle(F, t, t_in, t_out, zh, en, a=1.0):
     al = a * window(t, t_in, t_out, 0.45, 0.45)
     if al <= 0.003:
         return
-    serif(zh, 32, 400, 0.08).draw(F, 960, 952, IVORY, 0.92 * al, align="center")
-    italic(en, 22).draw(F, 960, 990, DIM, 0.95 * al, align="center")
+    if zh:
+        serif(zh, 30, 400, 0.08).draw(F, 960, SUB_ZH, IVORY, 0.92 * al, align="center")
+    italic(en, 21).draw(F, 960, SUB_EN, DIM, 0.95 * al, align="center")
 
 
 def subtitles(F, t, items, a=1.0):
@@ -237,10 +274,10 @@ def subtitles(F, t, items, a=1.0):
 def chapter_mark(F, a, num, zh, en):
     if a <= 0.003:
         return
-    T(num, "stix", 17, None, per_char=False).draw(F, 96, 92, GOLD, 0.85 * a)
-    serif(zh, 17, 500).draw(F, 96 + 34, 92, IVORY, 0.85 * a)
-    caps(en, 11, 0.36).draw(F, 96 + 62, 91, DIM, 0.9 * a)
-    hairline(F, 96, 106, 330, DIM, 0.3 * a)
+    T(num, "stix", 17, None, per_char=False).draw(F, 96, 76, GOLD, 0.85 * a)
+    serif(zh, 17, 500).draw(F, 96 + 34, 76, IVORY, 0.85 * a)
+    caps(en, 11, 0.36).draw(F, 96 + 62, 75, DIM, 0.9 * a)
+    hairline(F, 96, 90, 330, DIM, 0.3 * a)
 
 
 def gauge(F, cx, y, w, value, color, zh, en, value_text, a=1.0, ticks=10):
@@ -248,8 +285,9 @@ def gauge(F, cx, y, w, value, color, zh, en, value_text, a=1.0, ticks=10):
     if a <= 0.003:
         return
     x0, x1 = cx - w / 2, cx + w / 2
-    serif(zh, 14, 500, 0.2).draw(F, x0, y - 14, DIM, a)
-    caps(en, 10, 0.34).draw(F, x0 + 70, y - 15, DIM, 0.9 * a)
+    zl = serif(zh, 14, 500, 0.2)
+    zl.draw(F, x0, y - 14, DIM, a)
+    caps(en, 10, 0.34).draw(F, x0 + zl.width + 12, y - 15, DIM, 0.9 * a)
     italic(value_text, 18).draw(F, x1, y - 12, color, a, align="right")
     hairline(F, x0, y, x1, DIM, 0.35 * a)
     for k in range(ticks + 1):
