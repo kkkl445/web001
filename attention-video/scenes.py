@@ -1,6 +1,6 @@
 """注意力 · Attention Is All You Need.  draw(F, t_local, g_global, frame).  Third cut.
 
-ChatGPT only ever guesses the next word; to guess well it must know who 「它」
+An AI chatbot only ever guesses the next word; to guess well it must know who 「它」
 is.  Words are numbers - stars in a sky of meaning - and attention is how each
 star looks around and moves to where it belongs: a question, a label, a
 content; multiply and add; softmax; mix.  Then layers, training, and the
@@ -193,22 +193,34 @@ def formula_big(F, cx, cy, t, t0, a=1.0, scale=1.0):
     ST.add_light(F, cv2.GaussianBlur(ms, (0, 0), 14), x0, y0, GOLD, (0.35 + 1.2 * math.exp(-(t - t0) * 4)) * al)
 
 
+def ai_label(F, a=1.0, y=250):
+    """The disclosure required for AI-generated video: a small, clear tag at the top of the frame."""
+    if a <= 0.003:
+        return
+    tx = zh("本视频由 AI 辅助生成", 28, 500, 0.08)
+    w = tx.width + 44
+    st = ST.Stroke(CX - w / 2 - 3, y - 26, CX + w / 2 + 4, y + 27)
+    st.poly([(CX - w / 2, y - 23), (CX + w / 2, y - 23), (CX + w / 2, y + 23), (CX - w / 2, y + 23)], closed=True)
+    blend(F, np.full((46, int(w)), 1.0, np.float32), CX - w / 2, y - 23, np.array([0.0, 0.0, 0.0], np.float32),
+          0.45 * a)
+    st.light(F, IVORY, 0.55 * a)
+    tx.draw(F, CX, y + 10, IVORY, 0.92 * a, align="center")
+
+
 def cold(F, t, g, fi):
     """Three seconds to earn the next three minutes."""
     a = 1 - smooth(ramp(t, TL.CO_GO + 0.6, 0.4))
     formula_big(F, CX, 720, t, TL.CO_FORM, a, scale=1.0 - 0.12 * smooth(ramp(t, TL.CO_L1, 0.8)))
     shock(F, CX, 720, t - TL.CO_FORM, a, size=1.1)
-    punch(F, "你用过的每一个 AI 聊天机器人，", CX, 960, t, TL.CO_L1, TL.CO_L3, size=50, wght=500, a=a)
-    la = a * smooth(ramp(t, TL.CO_L1 + 0.6, 0.5)) * (1 - smooth(ramp(t, TL.CO_L3 - 0.5, 0.5)))
-    T("ChatGPT  ·  DeepSeek  ·  豆包  ·  Kimi", "sans", 30, 400, per_char=False).draw(F, CX, 1030, DIM, la,
-                                                                                   align="center")
-    punch(F, "心脏都是这一行公式。", CX, 1150, t, TL.CO_L2, TL.CO_L3, size=72, wght=700, a=a, gold=(4, 5, 6, 7, 8))
-    shock(F, CX, 1125, t - TL.CO_L2, 0.6 * a, size=0.6)
-    punch(F, "今天，把它彻底拆开。", CX, 1150, t, TL.CO_L3, None, size=70, wght=700, a=a, gold=(5, 6, 7, 8))
+    punch(F, "如今的 AI 聊天机器人，", CX, 990, t, TL.CO_L1, TL.CO_L3, size=52, wght=500, a=a)
+    punch(F, "几乎都建立在这一行公式上。", CX, 1130, t, TL.CO_L2, TL.CO_L3, size=62, wght=700, a=a, gold=(6, 7, 8, 9, 10))
+    shock(F, CX, 1105, t - TL.CO_L2, 0.6 * a, size=0.6)
+    punch(F, "今天，把它拆开来看。", CX, 1150, t, TL.CO_L3, None, size=70, wght=700, a=a, gold=(5, 6, 7, 8))
+    ai_label(F, a)
     cam(t, 6, extra=kick(t - TL.CO_FORM) + kick(t - TL.CO_L2) + kick(t - TL.CO_L3), y=760,
         out_at=TL.CO_GO, out_len=1.0)
-    subtitles(F, t, [(TL.CO_L1, TL.CO_L3 - 0.1, "", "Every AI chatbot you have ever used has this one line at its heart."),
-                     (TL.CO_L3, 5.8, "", "Today, we take it apart.")])
+    subtitles(F, t, [(TL.CO_L1, TL.CO_L3 - 0.1, "", "Today's AI chatbots are almost all built on this one line."),
+                     (TL.CO_L3, 5.8, "", "Today, let's take it apart.")])
 
 
 # ------------------------------------------------------------------ hook ---
@@ -257,8 +269,8 @@ def hook(F, t, g, fi):
             add_sprite(F, sx, sy, 40 + 60 * q, GOLD, 0.7 * math.sin(math.pi * q) * pa)
     subtitles(F, t, [(0.5, 4.0, "先来玩个游戏：下一个字是什么？", "A game first: what comes next?"),
                      (4.2, 8.0, "你大概会猜「累」，或者「高」。", "You'd probably guess 'tired', or 'tall'."),
-                     (8.4, 13.0, "ChatGPT 做的事，说穿了就是这个游戏：猜下一个字。",
-                      "All ChatGPT really does is play this game: guess the next word."),
+                     (8.4, 13.0, "AI 聊天机器人做的事，说穿了就是这个游戏：猜下一个字。",
+                      "All an AI chatbot really does is play this game: guess the next word."),
                      (13.4, 17.6, "猜一个，接上，再猜下一个——一整段回答，就是这样写出来的。",
                       "Guess one, add it, guess again - that is how a whole answer is written."),
                      (18.0, 22.4, "可要猜得准，它得先弄明白：这里的「它」，到底是谁？",
@@ -926,10 +938,10 @@ def mind(F, t, g, fi):
     statement(F, "如果是这样，它离“懂”还有多远？", CX, 740, t, TL.M_QUESTION, 97.4, size=54, cps=10)
     statement(F, "如果不止于此——", CX, 850, t, TL.M_QUESTION + 2.4, 97.4, size=54, cps=10)
     statement(F, "缺的，又是什么？", CX, 940, t, TL.M_QUESTION + 3.6, 97.4, size=54, cps=8, gold={0, 1})
-    subtitles(F, t, [(5.4, 10.0, "想象一本侦探小说，最后一页写着：“凶手是——”",
-                      "Picture a detective novel whose last page reads: 'The murderer is -'"),
-                     (10.4, 16.0, "要猜对这个名字，只认得字是不够的：得记住每一条线索，弄懂每一个人的动机。",
-                      "To guess the name, knowing the words is not enough: you must hold every clue and grasp every motive."),
+    subtitles(F, t, [(5.4, 10.0, "想象一本侦探小说，最后一页写着：“谜底是——”",
+                      "Picture a detective novel whose last page reads: 'And the answer is -'"),
+                     (10.4, 16.0, "要猜出谜底，只认得字是不够的：得记住每一条线索，弄懂每一个人的动机。",
+                      "To guess the answer, knowing the words is not enough: you must hold every clue and grasp every motive."),
                      (16.4, 20.0, "为了猜得准，它被逼着去理解。", "To guess well, it is forced to understand."),
                      (20.4, 26.6, "而它的数字，装不下它读过的全部文字——背不下来，就只能找规律。",
                       "And its numbers cannot hold all the text it has read - unable to memorise, it must find the rules."),
@@ -1022,6 +1034,7 @@ def ending(F, t, g, fi):
     T("Attention Is All You Need", "corm_it", 46, 500, per_char=False).draw(F, CX + 80, 890, IVORY, ta,
                                                                             align="center")
     caps("VASWANI ET AL.   ·   2017", 18, 0.45).draw(F, CX + 80, 934, DIM, ta, align="center")
+    ai_label(F, smooth(ramp(t, TL.END_TITLE + 1.0, 0.8)))
     subtitles(F, t, [(0.8, 5.6, "机器学会了注意力，于是开始读懂语言。", "Machines learned attention, and began to read language."),
                      (6.0, 11.8, "而在一个什么都在争夺你注意力的时代——",
                       "And in an age when everything is competing for your attention -"),

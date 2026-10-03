@@ -1040,7 +1040,7 @@ def _book_maps():
 
 
 def book(F, a=1.0, clues=0.0, threads=0.0, blank_a=1.0, t=0.0):
-    """An open detective novel lit by a lamp; the last line ends '凶手是＿＿'.  Clues light up and
+    """An open detective novel lit by a lamp; the last line ends '谜底是＿＿'.  Clues light up and
     threads run from the blank back to each of them."""
     if a <= 0.003:
         return
@@ -1081,7 +1081,7 @@ def book(F, a=1.0, clues=0.0, threads=0.0, blank_a=1.0, t=0.0):
     # the last line
     bx = x0 + w / 2 + 50
     by = y0 + 70 + 46 * (rows - 1)
-    tl = zh("凶手是", 34, 600, 0.04)
+    tl = zh("谜底是", 34, 600, 0.04)
     tl.draw(F, bx, by + 4, INKC, a)
     bl0 = bx + tl.width + 10
     if blank_a > 0:
