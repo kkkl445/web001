@@ -1,0 +1,4 @@
+fonts/
+build/
+.cache/
+__pycache__/
