@@ -2,8 +2,8 @@
 
 The viewer performs attention before being told what it is: in
 "小猫没有跳上桌子，因为它太累了。" everybody knows instantly who 「它」 is.
-Above the sentence a constellation cat acts it out - tries to jump onto a
-constellation table, falls short, lies down tired.  The fan of lines out of
+Above the sentence a cat made of starlight (a 3D net of stars) acts it out - tries to jump onto a table,
+falls short, lies down tired.  The fan of lines out of
 「它」 is what a Transformer computes, and whichever word wins, its drawing
 lights up.  Change one word (累 -> 高): the table grows, the cat looks up,
 and the attention moves to the table.  (Weights illustrative.)
@@ -18,7 +18,10 @@ from multiprocessing import Pool
 import numpy as np
 
 import synth as A
-from style import (CX, GOLD, IVORY, H, W, E, ROOT, add_sprite, caps, chapter_mark, ease_in_out, ease_out,
+import figures as FG
+import render3d as R3
+import wire3d as W3
+from style import (CX, GOLD, IVORY, H, W, E, ROOT, add_sprite, caps, ease_in_out, ease_out,
                    finalize, glow_poly, make_background, make_grain, mix, orb, ramp, serif, smooth, statement,
                    subtitles, twinkle, window, T)
 
@@ -38,75 +41,67 @@ T1, T2 = 0.25, 1.35
 T_HOP, T_LIE = 1.9, 2.5
 T_IT, T_FAN, T_SWAP, T_RE, T_NAME = 2.6, 3.2, 5.0, 5.6, 7.8
 
-# ------------------------------------------------- constellation drawings ---
+# -------------------------------------------------------- the 3D scene ---
 
-GROUND = 760
-CAT_X, CAT_S = 262, 140                    # anchor and px per unit
-#            tail tip    tail base    hip          back         neck         head back    ear          ear dip
-CAT_SIT = [(-1.0, -0.15), (-0.55, -0.12), (-0.5, -0.45), (-0.25, -0.85), (0.12, -1.05), (0.12, -1.3), (0.15, -1.62),
-           (0.28, -1.42), (0.42, -1.62), (0.5, -1.32), (0.58, -1.18), (0.38, -1.05), (0.32, -0.6), (0.32, 0.0),
-           (-0.3, 0.0), (0.4, -1.24), (0.82, -1.24), (0.8, -1.1)]
-#            ear          forehead     nose         chin         chest        front paw    back paw
-CAT_LIE = [(-1.15, -0.05), (-0.7, -0.08), (-0.6, -0.32), (-0.2, -0.45), (0.2, -0.42), (0.25, -0.62), (0.3, -0.9),
-           (0.42, -0.72), (0.55, -0.88), (0.62, -0.6), (0.72, -0.42), (0.5, -0.3), (0.35, -0.15), (0.85, 0.0),
-           (-0.35, 0.0), (0.56, -0.56), (0.96, -0.5), (0.94, -0.36)]
-CAT_EDGES = [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9), (9, 10), (10, 11), (11, 4),
-             (11, 12), (12, 13), (2, 14), (12, 2), (10, 16), (10, 17)]
-CAT_EYE = 15
-TAB_X, TAB_S = 470, 140
-TAB_EDGES = [(0, 1), (1, 2), (2, 3), (3, 0), (0, 4), (1, 5), (2, 6), (3, 7)]
+T_TABLE_IN, T_CAT_IN = 0.3, 0.6
+TABLE_H0, TABLE_H1 = 1.0, 2.2
+CAT_ORIGIN = (-0.72, 0.0, 0.05)
 
 
-def cat_pose(t):
-    sit, lie = np.array(CAT_SIT), np.array(CAT_LIE)
+
+def camera(t):
+    yaw = 0.12 + 0.36 * ease_in_out(t / DUR)                  # a slow drift round the scene shows its depth
+    return R3.Camera(target=(0.45, 0.9, 0.0), dist=6.0, yaw=yaw, pitch=0.17, focal=1500, cx=520, cy=560)
+
+
+def cat_state(t):
     down = ease_in_out(ramp(t, T_LIE, 0.8)) * (1 - ease_in_out(ramp(t, T_SWAP + 0.1, 0.8)))
-    p = sit + (lie - sit) * down
     hop = math.sin(math.pi * ramp(t, T_HOP, 0.55)) if T_HOP <= t <= T_HOP + 0.55 else 0.0
-    p = p + np.array([0.25, -0.75]) * hop                         # a hop that falls short of the table
-    up = ease_in_out(ramp(t, T_SWAP + 0.5, 0.6))                  # sitting up, looking at the taller table
-    head = list(range(5, 12)) + [15, 16, 17]
-    p[head] = p[head] + np.array([0.0, -0.08]) * up
-    return np.column_stack([CAT_X + p[:, 0] * CAT_S, GROUND + p[:, 1] * CAT_S])
+    look = ease_in_out(ramp(t, T_SWAP + 0.5, 0.7))
+    return round(down, 3), round(hop, 3), round(look, 3)
 
 
-def table_pts(t):
-    h = 1.5 + 1.6 * ease_in_out(ramp(t, T_SWAP, 1.0))
-    top = np.array([(0, -h), (2.6, -h), (3.0, -h - 0.35), (0.4, -h - 0.35)])
-    feet = np.array([(0, 0), (2.6, 0), (3.0, -0.35), (0.4, -0.35)])
-    p = np.vstack([top, feet])
-    return np.column_stack([TAB_X + p[:, 0] * TAB_S, GROUND + p[:, 1] * TAB_S])
+def table_h(t):
+    return round(TABLE_H0 + (TABLE_H1 - TABLE_H0) * ease_in_out(ramp(t, T_SWAP, 1.0)), 3)
 
 
-def constellation(F, pts, edges, t, t0, dur, glow, seed, eye=None):
-    """Stars joined one line at a time; glow 0..1 turns them from cool steel to gold."""
-    col = mix(STEEL, GOLD, glow)
-    a_line = 0.35 + 0.65 * glow
-    prog = ramp(t, t0, dur) * len(edges)
-    lit = set()
-    for k, (i, j) in enumerate(edges):
-        f = min(1.0, max(0.0, prog - k))
-        if f <= 0:
-            continue
-        p, q = pts[i], pts[j]
-        glow_poly(F, [p, p + (q - p) * f], col, a_line, th=1, glow=0.5 + 0.8 * glow, sigma=3 + 2 * glow)
-        lit.add(i)
-        if f >= 1:
-            lit.add(j)
-    if eye is not None and prog >= len(edges) * 0.6:
-        lit.add(eye)
-    rng = np.random.default_rng(seed)
-    ph = rng.uniform(0, 6.28, len(pts))
-    for i in lit:
-        tw_ = 0.8 + 0.2 * math.sin(t * 2.3 + ph[i])
-        orb(F, pts[i][0], pts[i][1], 3.5 + 2.5 * glow, col, (0.55 + 0.45 * glow) * tw_)
+_wcat = []
 
 
-def ground(F, t):
-    a = 0.22 * smooth(ramp(t, 0.2, 1.0))
-    if a > 0:
-        xs = np.linspace(150, 900, 32)
-        for x in xs:
-            orb(F, x, GROUND + 4, 1.2, STEEL, a)
+def scene(F, t, g_cat, g_table):
+    """Draw the table and the cat as starlight in 3D; returns screen anchors for the word links."""
+    if not _wcat:                                    # one star net modelled sitting, one lying down
+        _wcat.extend([W3.WireCat(), W3.WireCat(n=200, seed=5, rest_down=1.0)])
+    sit_net, lie_net = _wcat
+    cam = camera(t)
+    down, hop, look = cat_state(t)
+    h = table_h(t)
+    r_tab = ramp(t, T_TABLE_IN, 1.0)
+    r_cat = ramp(t, T_CAT_IN, 1.2)
+    W3.floor_stars(F, cam, smooth(ramp(t, 0.1, 1.0)))
+    tp, te = W3.table_wire(h)
+    W3.draw_wire(F, cam, tp, None, te, g_table, 1.0, reveal=r_tab, seed=2)
+    for net, a, sd in ((sit_net, 1 - smooth(down), 1), (lie_net, smooth(down), 4)):
+        if a > 0.01:
+            P, N, eyes = net.pose(down, hop, look, CAT_ORIGIN)
+            W3.draw_wire(F, cam, P, N, net.edges, g_cat, a, reveal=r_cat, seed=sd, rest=net.rest)
+    a_eye = smooth(ramp(t, T_CAT_IN + 1.0, 0.4))
+    head = np.mean(eyes, axis=0)
+    for e in eyes:                                   # open and bright while it sits; shut while it lies tired
+        p = cam.project(e)
+        near = 0.55 + 0.45 * float(np.clip((cam.project(head)[2] - p[2]) / 0.08 + 0.5, 0, 1))
+        if down < 0.5:
+            orb(F, p[0], p[1], 3.0, GOLD, a_eye * near * (1 - 2 * down) * (0.9 + 0.5 * g_cat), core=WARM)
+        else:
+            glow_poly(F, [(p[0] - 6, p[1] - 1), (p[0], p[1] + 2), (p[0] + 6, p[1] - 1)], GOLD,
+                      a_eye * near * (2 * down - 1) * 0.8, th=1, glow=0.4, sigma=2)
+    chest = cam.project(np.asarray(CAT_ORIGIN) + np.array([0.15 + 0.4 * down + 0.28 * hop,
+                                                           0.45 - 0.2 * down + 0.55 * hop, 0]))
+    top = cam.project(np.array([0.6, h, 0.5]))
+    return chest[:2], top[:2]
+
+
+WARM = np.array([1.0, 0.93, 0.8], np.float32)
 
 
 # ------------------------------------------------------------- sentence ---
@@ -190,19 +185,15 @@ def frame(fi, bg, vig, tw, grain):
     t = fi / FPS
     F = bg.copy()
     twinkle(F, tw, t)
-    chapter_mark(F, window(t, 0.3, 10, 1.0, 0.6), "00", "序", "PROLOGUE")
     w = weights(t)
     hl = smooth(ramp(t, T_FAN + 0.8, 0.5))
     rel = w / w.max()
-    # the picture: a constellation table, and a cat that is either too tired or the table too tall
-    ground(F, t)
-    tab = table_pts(t)
-    cat = cat_pose(t)
-    constellation(F, tab, TAB_EDGES, t, 0.35, 1.1, hl * smooth((rel[TABLE] - 0.3) / 0.7), seed=2)
-    constellation(F, cat, CAT_EDGES, t, 0.6, 1.3, hl * smooth((rel[CAT] - 0.3) / 0.7), seed=1, eye=CAT_EYE)
-    for i, target in ((CAT, cat[12]), (TABLE, (tab[0] + tab[1]) / 2)):
+    # the picture: a 3D cat and a table, lit gold when 「它」 is looking at them
+    g_cat, g_tab = (hl * smooth((rel[i] - 0.3) / 0.7) for i in (CAT, TABLE))
+    a_cat, a_tab = scene(F, t, g_cat, g_tab)
+    for i, target in ((CAT, a_cat), (TABLE, a_tab)):
         tx, ty, _ = TOK[i]
-        link(F, np.array([tx, ty - SIZE - 66]), np.array(target) + np.array([0, 18]),
+        link(F, np.array([tx, ty - SIZE - 66]), np.asarray(target) + np.array([0, 14]),
              hl * smooth((rel[i] - 0.5) / 0.5), GOLD)
     # the fan of attention out of 「它」
     grow = ease_out(ramp(t, T_FAN, 0.9))
@@ -259,10 +250,8 @@ def score(path):
                             (T_NAME, 2.4, [46, 53, 57, 60, 62])):
         for m in notes:
             A.place(pad, A.pad_note(m, hold, attack=1.2, release=2.0), t0)
-    for t0, dur, ne in ((0.35, 1.1, len(TAB_EDGES)), (0.6, 1.3, len(CAT_EDGES))):
-        for k in range(ne):                          # each star joining the drawing
-            A.place(tick, A.blip(int(A.rng.choice([88, 91, 93, 96])), 0.18), t0 + dur * k / ne,
-                    pan=A.rng.uniform(-0.6, 0.2))
+    A.place(bel, A.bell(74, 0.25, ratio=2.0, dur=3.0), T_TABLE_IN + 0.2, pan=0.3)
+    A.place(bel, A.bell(79, 0.25, ratio=2.0, dur=3.0), T_CAT_IN + 0.3, pan=-0.4)
     A.place(fx, A.thud(0.35), T_HOP + 0.5)
     A.place(pno, A.piano(65, 0.28), T_LIE + 0.1)
     A.place(pno, A.piano(60, 0.24), T_LIE + 0.5)
