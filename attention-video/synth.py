@@ -273,3 +273,58 @@ def master(mix, out, lufs_target=-14.5, ceiling_db=-1.5):
     sf.write(out, mix.astype(np.float32), SR, subtype="PCM_24")
     tmp.unlink()
     return loudness(out)
+
+
+# ------------------------------------------------- paper-and-ink sounds ---
+
+@functools.lru_cache(maxsize=None)
+def pluck(m, vel, dur=4.5, bright=0.55):
+    """Plucked silk string (Karplus-Strong): a guqin-like voice."""
+    f = mtof(m)
+    n = int(dur * SR)
+    d = max(2, int(round(SR / f)))
+    r = np.random.default_rng(m * 7 + int(vel * 100))
+    burst = lp(r.uniform(-1, 1, d), 1200 + 6000 * bright, 1)
+    x = np.zeros(n)
+    x[:d] = burst
+    g = 0.996 - 0.0006 * max(0, m - 60) / 12
+    a = np.zeros(d + 2)
+    a[0] = 1.0
+    a[d] = -g / 2
+    a[d + 1] = -g / 2
+    y = signal.lfilter([1.0], a, x)
+    y = lp(y, 2400 + 3000 * bright, 2)
+    y += 0.25 * np.sin(2 * np.pi * f * np.arange(n) / SR) * np.exp(-np.arange(n) / SR / 1.4)
+    y *= 1 - np.exp(-np.arange(n) / (0.002 * SR))
+    y[-int(0.3 * SR):] *= np.linspace(1, 0, int(0.3 * SR))
+    return y / (np.abs(y).max() + 1e-9) * vel
+
+
+def brush_swish(dur, vel):
+    """A brush dragged across paper: soft band noise with bristle flutter."""
+    n = int((dur + 0.15) * SR)
+    t = np.arange(n) / SR
+    z = bp(rng.standard_normal(n), 900, 5200)
+    flutter = 1 + 0.35 * lp(rng.standard_normal(n), 30, 1) / 0.05
+    env = np.clip(t / 0.03, 0, 1) * np.clip((dur + 0.15 - t) / 0.18, 0, 1) * (0.7 + 0.3 * np.sin(np.pi * np.clip(t / dur, 0, 1)))
+    v = z * np.clip(flutter, 0.3, 1.8) * env
+    return v / (np.abs(v).max() + 1e-9) * vel
+
+
+def pencil_scratch(dur, vel):
+    n = int((dur + 0.05) * SR)
+    t = np.arange(n) / SR
+    z = hp(rng.standard_normal(n), 2500) * (0.6 + 0.4 * np.sign(np.sin(2 * np.pi * 37 * t)))
+    env = np.clip(t / 0.01, 0, 1) * np.clip((dur + 0.05 - t) / 0.05, 0, 1)
+    v = z * env
+    return v / (np.abs(v).max() + 1e-9) * vel
+
+
+def stamp(vel):
+    """A seal pressed onto paper: a soft wooden knock."""
+    t = np.arange(int(0.5 * SR)) / SR
+    fr = 90 + 120 * np.exp(-t / 0.012)
+    body = np.sin(2 * np.pi * np.cumsum(fr) / SR) * np.exp(-t / 0.07)
+    tap = bp(rng.standard_normal(len(t)), 600, 3000) * np.exp(-t / 0.012) * 0.5
+    v = (body + tap) * (1 - np.exp(-t / 0.0015))
+    return v / (np.abs(v).max() + 1e-9) * vel
