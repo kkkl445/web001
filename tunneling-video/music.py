@@ -18,8 +18,8 @@ from scipy import signal
 from scipy.ndimage import maximum_filter1d
 
 from style import ROOT
-from timeline import (BALL_HIT, BURST, CHAPTERS, COLLIDE, DETECT, DURATION, ELECTRON_HITS, EMERGE, FINAL,
-                      FORMULA, IMPOSSIBLE, MORPH, REEL, REVEAL, SPARKS, START, STEPS, TITLE, VIGNETTES)
+from timeline import (BALL_HIT, BURST, CALLBACK, COLLIDE, DETECT, DURATION, EARTH, EMERGE, FILL, FINAL, FORMULA,
+                      IGNITE, IMPOSSIBLE, LAYERS, MORPH, NM1, NM2, PEAK, SHOTS, START, THROUGH_SHOT, TITLE, ZEROS)
 
 SR = 48000
 N = int(DURATION * SR)
@@ -32,21 +32,22 @@ CHORDS = {  # bass, voicing
     "Bbmaj7#11": (34, [46, 50, 57, 64, 65]),
     "Gm9": (43, [50, 55, 58, 65, 69]),
     "Fmaj9": (41, [53, 57, 60, 64, 67]),
-    "F/A": (45, [53, 57, 60, 65, 67]),
     "Am7": (45, [52, 57, 60, 64, 67]),
     "C69": (36, [48, 55, 62, 64, 69]),
     "A7sus4": (45, [52, 57, 62, 67, 71]),
     "Dsus2": (38, [50, 57, 62, 64, 69]),
 }
-P_, W_, V_, T_, H_, L_, E_ = (START[k] for k in ("prologue", "wall", "wave", "through", "thin", "light",
-                                                 "epilogue"))
-PLAN = [(0.0, "Dadd9"), (8.6, "Bbmaj7#11"), (TITLE, "Dm9"),
-        (W_, "Dm9"), (W_ + 8, "Gm9"), (IMPOSSIBLE, "Dm9"),
-        (V_, "Fmaj9"), (V_ + 8, "Am7"), (V_ + 16, "Bbmaj9"),
-        (T_, "Dm9"), (T_ + 8, "Bbmaj9"), (T_ + 16, "Gm9"), (REVEAL, "F/A"), (REVEAL + 4, "C69"),
-        (H_, "Dm9"), (H_ + 8, "Bbmaj9"), (FORMULA, "Gm9"), (H_ + 22, "A7sus4"),
-        (L_, "Fmaj9"), (L_ + 8, "C69"), (L_ + 16, "Dm9"), (L_ + 22, "Bbmaj9"),
-        (E_, "Bbmaj9"), (E_ + 4, "Gm9"), (MORPH[0], "A7sus4"), (MORPH[1], "Fmaj9"), (FINAL, "Dsus2")]
+Wl, Wv, Sp, Zr, Su, Ep = (START[k] for k in ("wall", "wave", "seep", "zeros", "sun", "epilogue"))
+PLAN = [(0.0, "Dadd9"), (10.0, "Bbmaj7#11"), (TITLE, "Dm9"),
+        (Wl, "Dm9"), (Wl + 6, "Gm9"), (IMPOSSIBLE, "Dm9"),
+        (Wv, "Fmaj9"), (Wv + 6, "Am7"), (Wv + 12, "Bbmaj9"),
+        (Sp, "Dm9"), (Sp + 6, "Bbmaj9"), (Sp + 12, "Gm9"), (Sp + 16, "Dm9"), (NM1, "Bbmaj7#11"),
+        (NM2, "A7sus4"), (FORMULA, "Gm9"), (MORPH[0] - 2, "A7sus4"), (MORPH[1], "Fmaj9"),
+        (Zr, "Dm9"), (Zr + 6, "Bbmaj7#11"), (Zr + 11, "Gm9"),
+        (Su, "Dadd9"),
+        (IGNITE, "Fmaj9"), (Su + 14.4, "C69"), (Su + 19.4, "Am7"), (Su + 24.6, "Bbmaj9"), (EARTH, "Fmaj9"),
+        (PEAK, "C69"), (Su + 38.5, "Bbmaj9"),
+        (Ep, "Dm9"), (Ep + 5.5, "Bbmaj9"), (FINAL, "Dsus2")]
 
 
 def mtof(m):
@@ -300,91 +301,111 @@ def score():
             prev = m
             note(m, tt, vel * rng.uniform(0.85, 1.05))
 
-    # prologue: almost nothing, then suspense
-    note(74, 0.9, 0.35)
-    note(69, 4.6, 0.3)
+    # --- prologue: the idiom, the ball, the electrons, the title
+    note(69, 1.2, 0.3)
+    note(74, FILL, 0.45)
+    place(bel, bell(81, 0.3), FILL + 0.05, pan=0.2)
     place(fx, thud(0.8), BALL_HIT)
-    place(bel, bell(81, 0.35), BALL_HIT + 0.02, pan=0.3)
-    k = 0
-    t = REEL[0]
-    while t < REEL[1]:
-        place(tick, blip(88 + (k % 3) * 2, 0.5), t, pan=0.25)
-        k += 1
-        t += 1 / 5.5
-    for th in ELECTRON_HITS:
-        place(bel, bell(86, 0.6, ratio=2.0), th, pan=0.35)
-        place(fx, thud(0.4), th)
+    place(bel, bell(76, 0.3, ratio=2.0), BALL_HIT + 0.02, pan=0.3)
+    note(62, 10.0, 0.35)
+    for i, ts in enumerate(SHOTS):
+        hit = ts + 1.0
+        if i == THROUGH_SHOT:
+            for kk, m in enumerate((81, 86, 88, 93)):
+                place(bel, bell(m, 0.5), hit + 0.07 * kk, pan=0.5)
+        else:
+            place(bel, bell(74, 0.4, ratio=2.0), hit, pan=0.35)
+            place(fx, thud(0.35), hit)
+    for kk, m in enumerate((62, 69, 74)):
+        note(m, 17.2 + 0.4 * kk, 0.38)
     place(fx, riser(BURST - 18.6, 0.6), 18.6)
     place(fx, boom(1.0), BURST)
     for kk, m in enumerate((50, 57, 62, 65, 69, 74)):
         note(m, TITLE + 0.07 * kk, 0.42)
     place(bel, bell(81, 0.6), TITLE + 0.5, pan=-0.3)
-
-    # chapter openings: soft low swell + single bell
-    for c in CHAPTERS:
+    for c in (Wl, Wv, Sp, Zr, Ep):
         place(fx, boom(0.35), c)
 
-    phrase(W_ + 1.0, IMPOSSIBLE - 1, 2.0, 0.42)
+    # --- wall
+    phrase(Wl + 1.0, IMPOSSIBLE - 1, 2.0, 0.42)
     place(fx, boom(0.8), IMPOSSIBLE)
     for kk, m in enumerate((38, 50, 57, 60, 65)):
         note(m, IMPOSSIBLE + 0.06 * kk, 0.45)
 
-    # wave: slow arpeggio of wonder + detection chimes
-    for tt in np.arange(V_ + 3.0, V_ + 21.0, 0.5):
+    # --- wave: slow arpeggio of wonder, chimes on detections
+    for tt in np.arange(Wv + 2.0, Wv + 17.5, 0.5):
         tn = tones(chord_at(tt), 62, 79)[:6]
-        idx = [0, 2, 4, 1, 3, 5, 2, 4][int(round((tt - V_) * 2)) % 8]
+        idx = [0, 2, 4, 1, 3, 5, 2, 4][int(round((tt - Wv) * 2)) % 8]
         note(tn[idx % len(tn)], tt, 0.22 if int(tt * 2) % 2 else 0.28)
     r2 = np.random.default_rng(12)
-    r2.normal(0, 1, (46, 2))
-    for td in np.sort(r2.uniform(10.0, 16.0, 46)):
-        place(tick, blip(int(rng.choice([86, 88, 91, 93, 95])), 0.45), V_ + td, pan=rng.uniform(-0.6, 0.6))
+    r2.normal(0, 1, (40, 2))
+    for td in np.sort(r2.uniform(6.0, 11.0, 40)):
+        place(tick, blip(int(rng.choice([86, 88, 91, 93, 95])), 0.45), Wv + td, pan=rng.uniform(-0.6, 0.6))
 
-    # through: suspense, collision, emergence, reveal
-    phrase(T_ + 1.0, COLLIDE, 2.0, 0.38, prob=0.7)
+    # --- seep: collision, emergence, layers (each fainter, lower), formula, morph
     place(fx, rumble(4.0, 0.9), COLLIDE - 1.5)
     place(fx, thud(0.6), COLLIDE)
     for kk, m in enumerate((76, 81, 83, 88)):
         place(bel, bell(m, 0.4), EMERGE + 0.18 * kk, pan=0.6)
-    place(fx, riser(2.0, 0.45), REVEAL - 2.0)
-    place(fx, boom(0.9), REVEAL)
-    for kk, m in enumerate((45, 53, 60, 65, 69, 72, 76)):
-        note(m, REVEAL + 0.07 * kk, 0.45)
-    phrase(REVEAL + 2, T_ + 30, 2.0, 0.36)
-
-    # thin: a clock, and a falling pulse per step
-    for b in np.arange(H_ + 1.0, FORMULA, 1.0):
-        place(kick, soft_kick(0.45 if int(b) % 2 == 0 else 0.3), b)
-    for i, st in enumerate(STEPS):
-        place(fx, thud(0.6), st)
-        place(bel, bell(81 - 5 * i, 0.55), st, pan=0.2)
-        for j in range(7):
-            place(tick, blip(93 - j, 0.25), st + 0.08 * j, pan=-0.2)
-    place(fx, boom(0.8), FORMULA)
+    phrase(Sp + 8.5, Sp + 16, 2.0, 0.34)
+    for k, tk in enumerate(LAYERS):
+        place(tick, blip(96 - k, 0.75 * (1 - k / 24)), tk, pan=-0.5 + k / 20)
+        place(kick, soft_kick(0.25 * (1 - k / 30)), tk)
+    place(bel, bell(79, 0.5), NM1, pan=0.2)
+    place(bel, bell(67, 0.5), NM2, pan=-0.2)
+    place(fx, boom(0.85), FORMULA)
     for kk, m in enumerate((43, 55, 62, 65, 70, 74)):
         note(m, FORMULA + 0.07 * kk, 0.42)
-
-    # light: swells and warm melody, sparkle under the atoms, pulses under the chip
-    place(fx, boom(0.6), VIGNETTES[0])
-    phrase(L_ + 1.0, L_ + 23.0, 1.0, 0.4, lo=67, hi=86, prob=0.6)
-    for tt in np.arange(VIGNETTES[1] + 0.5, VIGNETTES[1] + 7.0, 0.25):
-        place(tick, blip(int(rng.choice([91, 93, 95, 98])), 0.18), tt, pan=rng.uniform(-0.7, 0.7))
-    for b in np.arange(VIGNETTES[2], VIGNETTES[2] + 7.0, 0.5):
-        place(kick, soft_kick(0.35), b)
-    for tt in np.arange(SPARKS[0], SPARKS[1], 0.11):
-        place(tick, blip(int(rng.choice([88, 91, 93, 95, 98, 100])), 0.2 * rng.uniform(0.4, 1)), tt,
-              pan=rng.uniform(-0.9, 0.9))
-
-    # epilogue: morph riser, resolution, final chord
     place(fx, riser(MORPH[1] - MORPH[0] + 0.4, 0.6), MORPH[0] - 0.4)
     place(fx, boom(0.85), MORPH[1])
     for kk, m in enumerate((41, 53, 60, 64, 67, 72, 76)):
         note(m, MORPH[1] + 0.07 * kk, 0.45)
     place(bel, bell(84, 0.55), MORPH[1] + 0.4, pan=0.3)
+
+    # --- zeros: accelerating clicks that blur into a whirr
+    z0 = ZEROS[0]
+    u, last = 0.0, -1
+    while u < 10.2:
+        count = 3.0 * u + 26.0 * u ** 2 + 14.0 * u ** 3
+        if int(count) // 3 != last:
+            last = int(count) // 3
+            place(tick, blip(int(rng.choice([91, 93, 96])), 0.22), z0 + u, pan=rng.uniform(-0.5, 0.5))
+            u += 1 / 30
+        else:
+            u += 1 / 600
+    n = int(10.4 * SR)
+    tt = np.arange(n) / SR
+    whirr = bp(rng.standard_normal((n, 2)), 2500, 7000) * ((tt / 10.4) ** 3 * (1 - smooth_np(tt, 9.6, 10.4)))[:, None]
+    place(fx, whirr * 0.25, z0)
+    phrase(Zr + 1.0, Zr + 15, 2.0, 0.3, lo=57, hi=72, prob=0.6)
+
+    # --- sun: silence, a single low note, ignition, warmth, the Earth
+    note(38, Su + 5.4, 0.4)
+    note(50, Su + 5.45, 0.25)
+    place(fx, riser(1.6, 0.35), IGNITE - 1.6)
+    place(fx, boom(1.0), IGNITE)
+    for kk, m in enumerate((41, 53, 57, 60, 64, 67, 72)):
+        note(m, IGNITE + 0.09 * kk, 0.45)
+    phrase(IGNITE + 2.0, EARTH, 2.0, 0.4, lo=65, hi=84)
+    for kk, m in enumerate((53, 60, 64, 69, 72, 76)):
+        note(m, EARTH + 0.12 * kk, 0.42)
+    place(bel, bell(84, 0.5), EARTH + 0.6, pan=0.4)
+    phrase(EARTH + 3.0, Ep - 0.5, 1.5, 0.4, lo=67, hi=86)
+    place(bel, bell(88, 0.45), PEAK, pan=-0.4)
+
+    # --- epilogue: the open blank, the last chord
+    note(62, CALLBACK, 0.35)
+    note(69, CALLBACK + 1.6, 0.3)
     for kk, m in enumerate((38, 50, 57, 62, 64, 69)):
         note(m, FINAL + 0.1 * kk, 0.38)
     place(bel, bell(81, 0.4), FINAL + 0.8, pan=-0.3)
 
     return dict(pad=pad, sub=sub, pno=pno, bel=bel, fx=fx, tick=tick, shim=shim, kick=kick)
+
+
+def smooth_np(t, a, b):
+    x = np.clip((t - a) / (b - a), 0, 1)
+    return x * x * (3 - 2 * x)
 
 
 def loudness(path):
@@ -416,9 +437,11 @@ def main():
     send = pad * 0.3 + pno * 0.5 + bel * 0.8 + tick * 0.6 + shim * 0.6 + fx * 0.25
     mix = hp(dry + reverb(send, ir) * 0.55, 28)
 
-    arc = automation([(0, -10), (8.5, -7), (18.5, -5), (20.1, 0), (25, -2), (W_, -4), (IMPOSSIBLE, -1),
-                      (V_, -4), (V_ + 20, -2.5), (T_, -3), (COLLIDE, -1), (REVEAL, 0.5), (H_, -2.5),
-                      (FORMULA, 0), (L_, -1), (L_ + 23, 0), (E_, -2), (MORPH[1], 0.5), (DURATION, 0)])
+    arc = automation([(0, -12), (9.5, -9), (10.0, -7), (18.6, -5), (20.1, 0), (25, -2), (Wl, -4),
+                      (IMPOSSIBLE, -1), (Wv, -4), (Wv + 17, -2.5), (Sp, -3), (COLLIDE, -1), (Sp + 16, -3),
+                      (NM2, -0.5), (FORMULA, 0), (MORPH[1], 0.5), (Zr, -3), (Zr + 10.5, 0), (Zr + 15.5, -6),
+                      (Su + 0.6, -24), (Su + 5.0, -24), (Su + 5.4, -12), (IGNITE - 0.2, -12), (IGNITE, 0.5),
+                      (EARTH, 0), (PEAK, 1), (Ep - 1, -1), (Ep, -5), (FINAL, -2), (DURATION, -2)])
     mix *= 10 ** (arc / 20)
     env = np.sqrt(lp(np.mean(mix ** 2, 1), 3.0, 1).clip(1e-12))
     thr = np.percentile(env, 85)
