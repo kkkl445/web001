@@ -4,7 +4,7 @@ The hero image is the film's own 2D simulation, caught just after the wave
 has hit the wall: the blue part that turned back, the gold part that got
 through.  Rendered with the same engine and palette as the film.
 
-  python3 poster.py   -> poster-3x4.png (1080x1440), cover-wide.png (1920x864)
+  python3 poster.py   -> poster-3x4.png (1080x1440), cover-16x9.png (1920x1080)
 """
 
 import math
@@ -153,12 +153,12 @@ def portrait():
 
 
 def wide():
-    w, h = 1920, 864
+    w, h = 1920, 1080
     F, vig = canvas(w, h)
-    sc = 5.2
+    sc = 5.6
     wall_x = 1290
     x0, x1 = 150, 375
-    y0, y1 = 22, 234
+    y0, y1 = 11, 245
     img = sim_image(x0, x1, y0, y1, boost=1.35)
     ih, iw = int(round(img.shape[0] * sc)), int(round(img.shape[1] * sc))
     img = cv2.resize(img, (iw, ih), interpolation=cv2.INTER_CUBIC)
@@ -169,15 +169,15 @@ def wide():
     S.E.add_rgb(F, img * fade * 0.95, left, top, 1.0)
     glass(F, wall_x, wall_x + P.BAR_W * sc, 0, h, vertical=True, scale=sc)
     D = P.packet2d()
-    readout(F, 1700, 210, f"{round(100 * float(D['T']))}%", "穿过", "GOT THROUGH", S.GOLD)
-    readout(F, 1180, 210, f"{round(100 * float(D['R']))}%", "回头", "TURNED BACK", S.CYAN, align="right")
-    t = S.serif("量子隧穿", 128, 500, 0.3)
-    t.draw(F, 120, 430, S.IVORY, 1.0, glow=0.35, glow_color=S.GOLD, glow_sigma=16)
-    S.serif("南墙之外", 36, 500, 0.6).draw(F, 124, 500, S.GOLD, 1.0)
-    S.hairline(F, 124, 526, 300, S.GOLD, 0.6)
-    S.caps("QUANTUM TUNNELING   ·   BEYOND THE WALL", 14, 0.42).draw(F, 124, 560, S.DIM, 1.0)
-    S.serif("撞了南墙，它却不一定回头。", 28, 400, 0.18).draw(F, 124, 650, S.IVORY, 0.9)
-    finish(F, vig, "cover-wide.png")
+    readout(F, 1680, 300, f"{round(100 * float(D['T']))}%", "穿过", "GOT THROUGH", S.GOLD)
+    readout(F, 1190, 300, f"{round(100 * float(D['R']))}%", "回头", "TURNED BACK", S.CYAN, align="right")
+    t = S.serif("量子隧穿", 136, 500, 0.3)
+    t.draw(F, 120, 540, S.IVORY, 1.0, glow=0.35, glow_color=S.GOLD, glow_sigma=16)
+    S.serif("南墙之外", 38, 500, 0.6).draw(F, 124, 614, S.GOLD, 1.0)
+    S.hairline(F, 124, 642, 300, S.GOLD, 0.6)
+    S.caps("QUANTUM TUNNELING   ·   BEYOND THE WALL", 14, 0.42).draw(F, 124, 678, S.DIM, 1.0)
+    S.serif("撞了南墙，它却不一定回头。", 30, 400, 0.18).draw(F, 124, 772, S.IVORY, 0.9)
+    finish(F, vig, "cover-16x9.png")
 
 
 if __name__ == "__main__":

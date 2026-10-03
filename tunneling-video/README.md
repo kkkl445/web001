@@ -2,7 +2,7 @@
 
 《量子力学》的姊妹篇。4 分 19 秒，1920×864（2.22 : 1 宽银幕）/ 30 fps，没有配音。画面中央一次只出现一句话，讲述交给底部的中英双语字幕，配乐为原创。
 
-**成片：[`quantum-tunneling.mp4`](quantum-tunneling.mp4)**　·　封面：[`poster-3x4.png`](poster-3x4.png)（竖版 3:4）/ [`cover-wide.png`](cover-wide.png)（横版，与成片同比例）
+**成片：[`quantum-tunneling.mp4`](quantum-tunneling.mp4)**　·　封面：[`poster-3x4.png`](poster-3x4.png)（竖版 3:4）/ [`cover-16x9.png`](cover-16x9.png)（横版 16:9）
 
 封面的主图就是片中的二维模拟本身：波撞墙之后，蓝色的八成回头，金色的两成穿了过去。
 
