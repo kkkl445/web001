@@ -1,8 +1,8 @@
 """Covers for 注意力 · Attention Is All You Need.
 
-The hero image is the film's opening plate: the cat drawn as a star-atlas
-figure, the Ming table, the sentence, and the gold thread from 「它」 to 小猫.
-9:16 for the video cover, 3:4 for the profile grid (image above, title below).
+Made for the feed: a big two-line headline people can read at thumbnail size,
+the formula glowing in the middle, and the film's star-atlas cat and Ming
+table underneath.  9:16 for the video cover, 3:4 for the profile grid.
 
   python3 poster.py   -> cover-9x16.png (1080x1920), poster-3x4.png (1080x1440)
 """
@@ -11,21 +11,23 @@ import cv2
 import numpy as np
 
 import plates as P
+import scenes as S
 import style as ST
-from style import GOLD, IVORY, DIM, T, caps, hairline, serif
+from style import GOLD, DIM, add_sprite, caps, zh
 
 W, H = 1080, 1920
 
 
-def canvas(seed=4):
+def canvas(h=H, seed=4):
     rng = np.random.default_rng(seed)
-    yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
-    F = np.empty((H, W, 3), np.float32)
+    yy, xx = np.mgrid[0:h, 0:W].astype(np.float32)
+    F = np.empty((h, W, 3), np.float32)
     F[:] = ST.rgb("030407")
-    d = ((xx - W / 2) / (0.7 * W)) ** 2 + ((yy - 0.47 * H) / (0.55 * H)) ** 2
+    d = ((xx - W / 2) / (0.7 * W)) ** 2 + ((yy - 0.45 * h) / (0.55 * h)) ** 2
     F += (ST.rgb("0b1322") - ST.rgb("030407")) * np.exp(-d * 1.4)[..., None]
-    stars = np.zeros((H, W), np.float32)
-    for x, y, b in zip(rng.uniform(0, W, 900), rng.uniform(0, H, 900), rng.power(4, 900) * 0.22 + 0.02):
+    stars = np.zeros((h, W), np.float32)
+    n = int(900 * h / 1920)
+    for x, y, b in zip(rng.uniform(0, W, n), rng.uniform(0, h, n), rng.power(4, n) * 0.22 + 0.02):
         cv2.circle(stars, (int(x * 16), int(y * 16)), int(rng.uniform(0.5, 1.2) * 16), float(b), -1, cv2.LINE_AA, 4)
     F += stars[..., None] * np.array([0.85, 0.9, 1.0], np.float32)
     return F
@@ -50,37 +52,40 @@ def finish(F, path):
     print("wrote", path, out.shape[1], "x", out.shape[0])
 
 
-def plate(F):
-    """The opening plate at the moment 「它」 has found 小猫."""
-    P.opening(F, w_cat=1.0, w_table=0.0, sleep=0.0, h=1.0, it_on=1.0, link=1.0, reveal=1.0, swap=0.0, a=1.0)
+def headline(F, y, size=96):
+    """你用的每个 AI / 心脏都是这一行 - bold, high contrast, readable as a thumbnail."""
+    ST.punch(F, "你用的每个 AI，", W / 2, y, 10.0, 0.0, size=int(size * 0.86), wght=800)
+    ST.punch(F, "心脏都是这一行", W / 2, y + size * 1.22, 10.0, 0.0, size=size, wght=900, gold=(0, 1))
 
 
-def title(F, y, size):
-    for k, line in enumerate(("Attention", "Is All You Need")):
-        T(line, "corm", size, 600, tracking=0.02).draw(F, W / 2, y + k * size * 1.08, IVORY, 1.0, align="center",
-                                                        glow=0.3, glow_color=GOLD, glow_sigma=16)
-    yz = y + size * 1.08 + size * 0.95
-    serif("注意力，就是你所需要的一切", int(size * 0.38), 500, 0.2).draw(F, W / 2, yz, GOLD, 1.0, align="center")
-    hairline(F, W / 2 - 80, int(yz + size * 0.38), W / 2 + 80, GOLD, 0.6)
-    caps("VASWANI ET AL.   ·   2017", int(size * 0.17), 0.45).draw(F, W / 2, yz + size * 0.78, DIM, 1.0,
-                                                                   align="center")
+def plate(F, ground, s_cat=300, s_table=250):
+    P.baseline(F, ground + 2, 120, 960, 1.0)
+    P.table_plate(F, 745, ground, s_table, 1.0, glow=0.0)
+    P.cat_plate(F, 320, ground, s_cat, "sit", glow=1.0)
 
 
 def cover():
     F = canvas()
-    title(F, 225, 108)
-    plate(F)
-    serif("「它」指的是谁？你一眼就知道。", 38, 400, 0.12).draw(F, W / 2, 1420, IVORY, 0.9, align="center")
+    add_sprite(F, W / 2, 760, 420, GOLD, 0.10)
+    headline(F, 330)
+    S.formula_big(F, W / 2, 720, 10.0, 0.0, 1.0, scale=1.0)
+    plate(F, 1210)
+    zh("7 分钟，彻底看懂 Transformer", 46, 700, 0.06).draw(F, W / 2, 1345, GOLD, 1.0, align="center")
+    caps("ATTENTION IS ALL YOU NEED   ·   2017", 20, 0.4).draw(F, W / 2, 1400, DIM, 1.0, align="center")
     finish(F, "cover-9x16.png")
 
 
 def portrait():
-    """3:4: the plate above, the title below; cut from a 9:16 canvas so the plate keeps its proportions."""
-    F = canvas(seed=5)
-    plate(F)
-    title(F, 1380, 100)
-    F = F[380:380 + 1440].copy()
+    ST.E.H = 1440                     # the engine clips drawing to its frame size
+    F = canvas(1440, seed=5)
+    add_sprite(F, W / 2, 610, 380, GOLD, 0.10)
+    headline(F, 210, size=92)
+    S.formula_big(F, W / 2, 580, 10.0, 0.0, 1.0, scale=0.95)
+    plate(F, 1080, s_cat=270, s_table=230)
+    zh("7 分钟，彻底看懂 Transformer", 44, 700, 0.06).draw(F, W / 2, 1200, GOLD, 1.0, align="center")
+    caps("ATTENTION IS ALL YOU NEED   ·   2017", 19, 0.4).draw(F, W / 2, 1252, DIM, 1.0, align="center")
     finish(F, "poster-3x4.png")
+    ST.E.H = H
 
 
 if __name__ == "__main__":

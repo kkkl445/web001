@@ -5,7 +5,9 @@ cd "$(dirname "$0")"
 mkdir -p fonts
 G=https://raw.githubusercontent.com/google/fonts/main/ofl
 get() { [ -f "fonts/$2" ] || curl -fsSL -o "fonts/$2" "$G/$1"; }
-get "notoserifsc/NotoSerifSC%5Bwght%5D.ttf"        NotoSerifSC.ttf
+get "notosanssc/NotoSansSC%5Bwght%5D.ttf"          NotoSansSC.ttf
+get "inter/Inter%5Bopsz,wght%5D.ttf"                Inter.ttf
+get "inter/Inter-Italic%5Bopsz,wght%5D.ttf"         Inter-Italic.ttf
 get "cormorantgaramond/CormorantGaramond%5Bwght%5D.ttf"        CormorantGaramond.ttf
 get "cormorantgaramond/CormorantGaramond-Italic%5Bwght%5D.ttf" CormorantGaramond-Italic.ttf
 get "stixtwotext/STIXTwoText%5Bwght%5D.ttf"        STIXTwoText.ttf

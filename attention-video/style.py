@@ -18,6 +18,8 @@ E = importlib.util.module_from_spec(_spec)
 sys.modules["engine"] = E
 _spec.loader.exec_module(E)
 E.FONT_DIR = ROOT / "fonts"
+E.FONT_FILES["inter"] = "Inter.ttf"           # screen-friendly sans for English text and small labels
+E.FONT_FILES["inter_it"] = "Inter-Italic.ttf"
 E.W, E.H = 1080, 1920          # 9 : 16, full screen in the Douyin feed
 
 W, H = E.W, E.H
@@ -144,20 +146,20 @@ _SUPER = set("⁰¹²³⁴⁵⁶⁷⁸⁹⁻")
 _mixed = {}
 
 
-def serif(s, size, wght=400, tracking=0.0):
-    """Serif CJK text; superscript digits (missing from the CJK face) come from STIX."""
+def zh(s, size, wght=400, tracking=0.0):
+    """Chinese text in a sans face that reads well on a phone; superscript digits come from STIX."""
     if not _SUPER.intersection(s):
-        return T(s, "serif", size, wght, tracking=tracking)
+        return T(s, "sans", size, wght, tracking=tracking)
     key = (s, size, wght, tracking)
     if key not in _mixed:
         runs, cur, sup = [], "", None
         for ch in s:
             k = ch in _SUPER
             if sup is not None and k != sup:
-                runs.append((cur, "stix" if sup else "serif", size, None if sup else wght))
+                runs.append((cur, "stix" if sup else "sans", size, None if sup else wght))
                 cur = ""
             cur, sup = cur + ch, k
-        runs.append((cur, "stix" if sup else "serif", size, None if sup else wght))
+        runs.append((cur, "stix" if sup else "sans", size, None if sup else wght))
         _mixed[key] = E.Text(runs, tracking, per_char=True)
     return _mixed[key]
 
@@ -178,11 +180,12 @@ def draw_sci(F, mant, exp, x, y, size, color, a=1.0, align="left", prefix=""):
 
 
 def caps(s, size=12, tracking=0.32):
-    return T(s, "corm", size, 600, tracking=tracking, per_char=False)
+    return T(s, "inter", size, 500, tracking=tracking * 0.75, per_char=False)
 
 
-def italic(s, size=22):
-    return T(s, "corm_it", size, 500, per_char=False)
+def latin(s, size=22, wght=400):
+    """English running text (subtitles, notes) in Inter."""
+    return T(s, "inter", size, wght, per_char=False)
 
 
 def _char_blur(m, sigma):
@@ -201,7 +204,7 @@ def statement(F, s, cx, y, t, t_in, t_out=None, size=60, wght=400, tracking=0.2,
               color=IVORY, a=1.0, cursor=False, align="center", fade_in=0.22):
     """Typewriter line; characters dissolve (blur + drift) on the way out.
     Returns x right after the full line (for a following blank)."""
-    tx = serif(s, size, wght, tracking)
+    tx = zh(s, size, wght, tracking)
     x0 = cx - tx.width / 2 if align == "center" else cx
     n = len(tx.items)
     for i, (m, dx, dy) in enumerate(tx.items):
@@ -256,7 +259,7 @@ def blank(F, x, y, size, a, t, words=None, t_reel=None, speed=7.0, hold=None):
         al = a * max(0.0, 1 - dist * 0.75) ** 1.6
         if al <= 0.01:
             continue
-        tw = serif(words[idx], size, 500, 0.1)
+        tw = zh(words[idx], size, 500, 0.1)
         tw.draw(F, x + size * 0.15 + (w - tw.width) / 2, y + (j - fr) * lh, GOLD, al)
 
 
@@ -277,46 +280,68 @@ def _wrap(text, make, max_w, sep_chars):
     return list(best)
 
 
-def subtitle(F, t, t_in, t_out, zh, en, a=1.0):
+# Subtitles are drawn after the camera move, so they stay put while the picture zooms.
+# render.py turns DEFER on, lets the scene queue its lines, moves the camera, then calls flush_subtitles().
+DEFER = [False]
+_QUEUE = []
+# The scene can ask for a camera: scale about (x, y) plus a shift; render.py applies it.
+CAMERA = {}
+
+
+def camera(scale=1.0, x=None, y=None, dx=0.0, dy=0.0, blur=0.0):
+    CAMERA.update(scale=scale, x=CX if x is None else x, y=860 if y is None else y, dx=dx, dy=dy, blur=blur)
+
+
+def flush_subtitles(F):
+    DEFER[0] = False
+    for args in _QUEUE:
+        subtitle(F, *args)
+    _QUEUE.clear()
+
+
+def subtitle(F, t, t_in, t_out, zh_text, en_text, a=1.0):
+    if DEFER[0]:
+        _QUEUE.append((t, t_in, t_out, zh_text, en_text, a))
+        return
     al = a * window(t, t_in, t_out, 0.45, 0.45)
     if al <= 0.003:
         return
-    zl = _wrap(zh, lambda s_: serif(s_, 40, 400, 0.08), 880, "，。：；？！、—") if zh else []
-    el = _wrap(en, lambda s_: italic(s_, 27), 900, " ") if en else []
+    zl = _wrap(zh_text, lambda s_: zh(s_, 40, 400, 0.08), 880, "，。：；？！、—") if zh_text else []
+    el = _wrap(en_text, lambda s_: latin(s_, 25), 900, " ") if en_text else []
     y = SUB_ZH - 54 * (len(zl) - 1) - 34 * (len(el) - 1)
     for line in zl:
-        serif(line, 40, 400, 0.08).draw(F, CX, y, IVORY, 0.94 * al, align="center")
+        zh(line, 40, 400, 0.08).draw(F, CX, y, IVORY, 0.94 * al, align="center")
         y += 54
     y += SUB_EN - SUB_ZH - 54
     for line in el:
-        italic(line, 27).draw(F, CX, y, DIM, 0.95 * al, align="center")
+        latin(line, 25).draw(F, CX, y, DIM, 0.95 * al, align="center")
         y += 34
 
 
 def subtitles(F, t, items, a=1.0):
-    for t_in, t_out, zh, en in items:
-        subtitle(F, t, t_in, t_out, zh, en, a)
+    for t_in, t_out, zh_text, en_text in items:
+        subtitle(F, t, t_in, t_out, zh_text, en_text, a)
 
 
-def chapter_mark(F, a, num, zh, en):
+def chapter_mark(F, a, num, zh_text, en):
     if a <= 0.003:
         return
     x, y = SAFE_L, 236
     T(num, "stix", 24, None, per_char=False).draw(F, x, y, GOLD, 0.85 * a)
-    serif(zh, 24, 500).draw(F, x + 46, y, IVORY, 0.85 * a)
+    zh(zh_text, 24, 500).draw(F, x + 46, y, IVORY, 0.85 * a)
     caps(en, 14, 0.36).draw(F, x + 84, y - 1, DIM, 0.9 * a)
     hairline(F, x, y + 20, x + 360, DIM, 0.3 * a)
 
 
-def gauge(F, cx, y, w, value, color, zh, en, value_text, a=1.0, ticks=10):
+def gauge(F, cx, y, w, value, color, zh_text, en, value_text, a=1.0, ticks=10):
     """Instrument: label, hairline scale, glowing dot at value (0..1)."""
     if a <= 0.003:
         return
     x0, x1 = cx - w / 2, cx + w / 2
-    zl = serif(zh, 14, 500, 0.2)
+    zl = zh(zh_text, 14, 500, 0.2)
     zl.draw(F, x0, y - 14, DIM, a)
     caps(en, 10, 0.34).draw(F, x0 + zl.width + 12, y - 15, DIM, 0.9 * a)
-    italic(value_text, 18).draw(F, x1, y - 12, color, a, align="right")
+    latin(value_text, 18).draw(F, x1, y - 12, color, a, align="right")
     hairline(F, x0, y, x1, DIM, 0.35 * a)
     for k in range(ticks + 1):
         blend(F, np.full((4, 1), 255, np.uint8), x0 + w * k / ticks, y - 1, DIM, 0.35 * a)
@@ -324,3 +349,87 @@ def gauge(F, cx, y, w, value, color, zh, en, value_text, a=1.0, ticks=10):
     if xv > x0 + 1:
         glow_poly(F, [(x0, y), (xv, y)], color, 0.9 * a, th=2, glow=0.7, sigma=4)
     orb(F, xv, y, 7, color, a)
+
+
+# ------------------------------------------------------------- effects ---
+
+def shock(F, x, y, age, a=1.0, color=GOLD, size=1.0):
+    """A reveal's impact: a bright flash and a thin ring of light racing outwards."""
+    if age < 0 or age > 1.4 or a <= 0.003:
+        return
+    u = age / 1.4
+    r = (40 + 760 * ease_out(min(1.0, age / 1.1))) * size
+    fade = (1 - u) ** 2
+    add_sprite(F, x, y, 90 * size * (1 + age), color, 0.9 * a * math.exp(-age * 6))
+    add_sprite(F, x, y, 30 * size, WHITE, 1.2 * a * math.exp(-age * 9))
+    th = np.linspace(0, 2 * math.pi, 180)
+    glow_poly(F, np.column_stack([x + r * np.cos(th), y + r * np.sin(th)]), color, 0.55 * a * fade, th=2,
+              glow=1.2, sigma=6)
+
+
+_PUNCH = {}
+
+
+def punch(F, s, cx, y, t, t0, t_out=None, size=80, wght=600, color=IVORY, gold=(), a=1.0, tracking=0.08):
+    """A headline that lands: it drops in from slightly larger, flashes, then settles."""
+    if t < t0 or a <= 0.003:
+        return
+    key = (s, size, wght, tracking, tuple(gold))
+    if key not in _PUNCH:
+        tx = zh(s, size, wght, tracking)
+        pad = 30
+        w, h = int(tx.width + 2 * pad), int(size * 1.6 + 2 * pad)
+        base = int(size * 1.15 + pad)
+        mw = np.zeros((h, w), np.float32)
+        mg = np.zeros((h, w), np.float32)
+        for i, (m, dx, dy) in enumerate(tx.items):
+            x0, y0 = int(round(pad + dx)), int(round(base + dy))
+            tgt = mg if i in gold else mw
+            hh, ww = m.shape
+            tgt[y0:y0 + hh, x0:x0 + ww] = np.maximum(tgt[y0:y0 + hh, x0:x0 + ww], m / 255.0)
+        _PUNCH[key] = (mw, mg, base, w, h)
+    mw, mg, base, w, h = _PUNCH[key]
+    u = ease_out(ramp(t, t0, 0.32))
+    k = 1 + 0.32 * (1 - u)
+    al = a * min(1.0, (t - t0) / 0.12)
+    if t_out is not None:
+        al *= 1 - smooth(ramp(t, t_out - 0.5, 0.5))
+    if al <= 0.003:
+        return
+    ww, hh = max(1, int(w * k)), max(1, int(h * k))
+    for m, col in ((mw, color), (mg, GOLD)):
+        if m.max() <= 0:
+            continue
+        ms = cv2.resize(m, (ww, hh), interpolation=cv2.INTER_LINEAR)
+        x0 = cx - ww / 2
+        y0 = y - base * k
+        blend(F, ms, x0, y0, col, al)
+        flash = math.exp(-(t - t0) * 5.0)
+        if flash > 0.02:
+            add_light(F, cv2.GaussianBlur(ms, (0, 0), 10), x0, y0, col, 0.9 * flash * al)
+
+
+_WARP = {}
+
+
+def warp(F, age, dur=1.4, a=1.0, cx=CX, cy=860, n=520, seed=11):
+    """Stars streaking past - the jump into the sky of meaning."""
+    if age < 0 or age > dur or a <= 0.003:
+        return
+    if n not in _WARP:
+        rng = np.random.default_rng(seed)
+        _WARP[n] = (rng.uniform(0, 2 * math.pi, n), rng.uniform(0.02, 0.5, n), rng.uniform(0.4, 1.0, n))
+    ang, r0, br = _WARP[n]
+    u = age / dur
+    env = math.sin(math.pi * u) ** 0.8
+    speed = 2.6 * (0.3 + u)
+    r1 = r0 * math.exp(speed * u * 3.0) * 900
+    r2 = r1 * (1 + 0.35 * env)
+    img = np.zeros(F.shape[:2], np.float32)
+    for a_, p, q, b in zip(ang, r1, r2, br):
+        c, s_ = math.cos(a_), math.sin(a_)
+        x1, y1, x2, y2 = cx + p * c, cy + p * s_, cx + q * c, cy + q * s_
+        cv2.line(img, (int(x1 * 4), int(y1 * 4)), (int(x2 * 4), int(y2 * 4)), float(b), 1, cv2.LINE_AA, 2)
+    img = cv2.GaussianBlur(img, (0, 0), 1.2)
+    F += (img * 0.9 * env * a)[..., None] * mix(IVORY, GOLD, 0.25)
+    add_sprite(F, cx, cy, 140, GOLD, 0.25 * env * a)

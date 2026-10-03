@@ -13,7 +13,7 @@ import numpy as np
 
 import atlas as A
 import figures2d as G
-from style import (CX, DIM, GOLD, IVORY, E, T, add_sprite, blend, caps, glow_poly, hairline, mix, orb, ramp, serif,
+from style import (CX, DIM, GOLD, IVORY, E, T, add_sprite, blend, caps, glow_poly, hairline, mix, orb, ramp, zh,
                    smooth)
 
 STEEL = G.STEEL
@@ -96,7 +96,7 @@ class Line2:
 
     def __init__(self, lines, spans, size, ys, cx=CX, tracking=0.14):
         self.size, self.ys = size, ys
-        self.txt = [serif(l, size, 400, tracking) for l in lines]
+        self.txt = [zh(l, size, 400, tracking) for l in lines]
         self.x0 = [cx - tx.width / 2 for tx in self.txt]
         self.spans = spans
         self.char_tok = {}
@@ -128,7 +128,7 @@ class Line2:
                 if swap is not None and swap[0] == ln and swap[1] == i and swap[3] > 0:
                     sw = swap[3]
                     blend(F, m, x, y - 18 * sw, col, al * (1 - sw))
-                    alt = serif(swap[2], self.size, 400, 0).items[0]
+                    alt = zh(swap[2], self.size, 400, 0).items[0]
                     blend(F, alt[0], x + (m.shape[1] - alt[0].shape[1]) / 2, self.ys[ln] + alt[2] + 14 * (1 - sw),
                           mix(GOLD, col, sw ** 2), a * sw)
                 else:
@@ -226,7 +226,7 @@ def columns(F, a=1.0, left_w=None, right_on=None, right_a=0.32, left_a=0.85, xl=
     for i, tok in enumerate(tokens):
         y = y0 + dy * i
         ap = a * smooth(ramp(appear, 0.0, 1.0))
-        lw = serif(tok, COL_SIZE, 400, 0.1)
+        lw = zh(tok, COL_SIZE, 400, 0.1)
         rw = lw
         if left_w is not None:
             v = left_w[i] / max(left_w.max(), 1e-9)
@@ -281,11 +281,11 @@ def grid(F, M, a=1.0, on=1.0, row=None, x0=None, y0=420, cell=86, row_a=1.0):
     # column heads written downwards, two characters stacked
     for j, tok in enumerate(TOKENS):
         for c, ch in enumerate(tok):
-            serif(ch, 30, 500, 0).draw(F, x0 + cell * j + cell / 2, y0 - 26 - 34 * (len(tok) - 1 - c), IVORY,
+            zh(ch, 30, 500, 0).draw(F, x0 + cell * j + cell / 2, y0 - 26 - 34 * (len(tok) - 1 - c), IVORY,
                                        0.75 * a, align="center")
     for i, tok in enumerate(TOKENS):
         col = GOLD if i == row else IVORY
-        serif(tok, 32, 500, 0.06).draw(F, x0 - 18, y0 + cell * i + cell * 0.64, col, (1.0 if i == row else 0.75) * a,
+        zh(tok, 32, 500, 0.06).draw(F, x0 - 18, y0 + cell * i + cell * 0.64, col, (1.0 if i == row else 0.75) * a,
                                        align="right")
     st = E.Stroke(x0 - 2, y0 - 2, x0 + cell * n + 3, y0 + cell * n + 3)
     for k in range(n + 1):
@@ -349,7 +349,7 @@ def message(F, busts, k, q, a=1.0):
     for i, pp in enumerate(pts[:-1]):
         add_sprite(F, pp[0], pp[1], 1.3, col, 0.5 * a * strength * (i / len(pts)))
     orb(F, p[0], p[1], 5 + 5 * (1 - strength), col, (0.5 + 0.8 * strength) * a)
-    msg = serif("小猫", 32, 500, 0.15)
+    msg = zh("小猫", 32, 500, 0.15)
     sig = 0.4 + 3.4 * (1 - strength)
     pad = int(sig * 3) + 2
     for m, dx, dy in msg.items:
@@ -424,7 +424,7 @@ def qkv_plate(F, words=1.0, q=0.0, k=None, v=None, match=0.0, flow=0.0, it_a=1.0
     for i, tok in enumerate(QKV_TOK):
         y = q_row_y(i)
         g = smooth(ramp(match, 0.3, 0.7)) * rel[i] ** 1.5
-        serif(tok, 50, 400, 0.08).draw(F, Q_XW, y, mix(IVORY, GOLD, g), (0.85 + 0.15 * g) * a * words, align="right")
+        zh(tok, 50, 400, 0.08).draw(F, Q_XW, y, mix(IVORY, GOLD, g), (0.85 + 0.15 * g) * a * words, align="right")
         if k[i] > 0:
             ka = a * smooth(k[i])
             x0, x1 = Q_XK, Q_XK + 168
@@ -432,14 +432,14 @@ def qkv_plate(F, words=1.0, q=0.0, k=None, v=None, match=0.0, flow=0.0, it_a=1.0
                    fill=0.05 + 0.08 * g)
             T("K", "stix_it", 30, None, per_char=False).draw(F, x0 + 26, y - 7, mix(STEEL, GOLD, g), ka,
                                                              align="center")
-            serif(QKV_KEY[i], 28, 500, 0.1).draw(F, x0 + 100, y - 8, mix(IVORY, GOLD, g), 0.9 * ka, align="center")
+            zh(QKV_KEY[i], 28, 500, 0.1).draw(F, x0 + 100, y - 8, mix(IVORY, GOLD, g), 0.9 * ka, align="center")
         if v[i] > 0:
             va = a * smooth(v[i])
             add_sprite(F, Q_XV, y - 19, 18, mix(STEEL, GOLD, 0.5), 0.10 * va)
             orb(F, Q_XV, y - 19, 4.5, mix(STEEL, GOLD, 0.5), 0.9 * va)
             T("V", "stix_it", 22, None, per_char=False).draw(F, Q_XV + 22, y - 10, STEEL, 0.75 * va)
     # 它 and its question
-    it_t = serif("它", 76, 500, 0)
+    it_t = zh("它", 76, 500, 0)
     it_t.draw(F, IT_POS[0], IT_POS[1] + 26, GOLD, a * it_a, align="center")
     add_sprite(F, IT_POS[0], IT_POS[1], 60, GOLD, 0.18 * a * it_a)
     if q > 0:
@@ -447,7 +447,7 @@ def qkv_plate(F, words=1.0, q=0.0, k=None, v=None, match=0.0, flow=0.0, it_a=1.0
         cx_, cy_ = Q_CARD
         _rrect(F, cx_ - 100, cy_ - 46, cx_ + 100, cy_ + 46, GOLD, 0.85 * qa, r=12, glow=0.5, fill=0.08)
         T("Q", "stix_it", 40, None, per_char=False).draw(F, cx_ - 62, cy_ + 14, GOLD, qa, align="center")
-        serif("我指谁？", 30, 500, 0.1).draw(F, cx_ + 26, cy_ + 11, IVORY, qa, align="center")
+        zh("我指谁？", 30, 500, 0.1).draw(F, cx_ + 26, cy_ + 11, IVORY, qa, align="center")
         hairline(F, cx_ - 1, int(cy_ + 46), cx_ + 1, GOLD, 0.0)
     # matching beams: question -> labels
     if match > 0:
@@ -478,7 +478,7 @@ def qkv_plate(F, words=1.0, q=0.0, k=None, v=None, match=0.0, flow=0.0, it_a=1.0
         got = smooth(ramp(flow, 0.6, 0.4)) * a
         if got > 0:
             add_sprite(F, IT_POS[0], IT_POS[1], 90, GOLD, 0.25 * got)
-            serif("≈ 小猫", 34, 500, 0.1).draw(F, IT_POS[0], IT_POS[1] + 110, GOLD, got, align="center")
+            zh("≈ 小猫", 34, 500, 0.1).draw(F, IT_POS[0], IT_POS[1] + 110, GOLD, got, align="center")
 
 
 def ease_in_out_(u):
@@ -660,7 +660,7 @@ def bars(F, items, x0, y0, w, a=1.0, grow=1.0, row=74, size=40, hot=0, note=None
         y = y0 + row * i
         g = smooth(ramp(grow, 0.08 * i, 0.5))
         col = GOLD if i == hot else mix(STEEL, IVORY, 0.35)
-        serif(lab, size, 500, 0.0).draw(F, x0, y + size * 0.36, col if i == hot else IVORY, a, align="right")
+        zh(lab, size, 500, 0.0).draw(F, x0, y + size * 0.36, col if i == hot else IVORY, a, align="right")
         bw = (w * p / pmax) * g
         if bw > 1:
             E.add_light(F, np.full((int(size * 0.55), int(bw)), 1.0, np.float32), x0 + 24, y - size * 0.28, col,
@@ -670,12 +670,12 @@ def bars(F, items, x0, y0, w, a=1.0, grow=1.0, row=74, size=40, hot=0, note=None
         T(f"{round(100 * p)}%", "stix", int(size * 0.8), None, per_char=False).draw(
             F, x0 + 40 + bw, y + size * 0.3, col if i == hot else DIM, a * g)
     if note:
-        serif(note, 24, 400, 0.1).draw(F, x0 + 24 + w, y0 + row * len(items), DIM, 0.8 * a, align="right")
+        zh(note, 24, 400, 0.1).draw(F, x0 + 24 + w, y0 + row * len(items), DIM, 0.8 * a, align="right")
 
 
 def guess_line(F, text, x, y, size, a=1.0, typed=None, blank=True, t=0.0, fill=None, fill_a=0.0):
     """A sentence typed out, ending in a blank box with a blinking cursor (or the guessed character)."""
-    tx = serif(text, size, 400, 0.12)
+    tx = zh(text, size, 400, 0.12)
     n = len(tx.items)
     x0 = x - (tx.width + size * 1.1) / 2
     for i, (m, dx, dy) in enumerate(tx.items):
@@ -688,7 +688,7 @@ def guess_line(F, text, x, y, size, a=1.0, typed=None, blank=True, t=0.0, fill=N
         if on > 0:
             _rrect(F, bx, y - size * 0.92, bx + size * 0.98, y + size * 0.16, GOLD, 0.7 * a * on, r=6, glow=0.4)
             if fill and fill_a > 0:
-                serif(fill, size, 500, 0).draw(F, bx + size * 0.49, y, GOLD, a * fill_a, align="center")
+                zh(fill, size, 500, 0).draw(F, bx + size * 0.49, y, GOLD, a * fill_a, align="center")
             elif (t * 1.6) % 1 < 0.6:
                 hairline(F, bx + size * 0.3, int(y + size * 0.02), bx + size * 0.7, GOLD, 0.9 * a * on, th=3)
     return x0
@@ -721,31 +721,46 @@ def sky_word(F, name, p, a=1.0, glow=0.0, size=34, mag=1.0, label=True, col=None
     c = col if col is not None else mix(mix(STEEL, IVORY, 0.55), GOLD, glow)
     orb(F, p[0], p[1], (3.0 + 2.0 * mag) * (1 + 0.6 * glow), c, (0.7 + 0.3 * glow) * a)
     if label:
-        serif(name, size, 500, 0.05).draw(F, p[0] + 16, p[1] + size * 0.36, mix(IVORY, GOLD, glow), 0.85 * a)
+        zh(name, size, 500, 0.05).draw(F, p[0] + 16, p[1] + size * 0.36, mix(IVORY, GOLD, glow), 0.85 * a)
 
 
-def sky(F, a=1.0, groups=1.0, words=None, dim=None, glow=None, nebula=1.0):
-    """The sky of meaning: words as stars, neighbours in meaning close together, each family faintly joined."""
+_SCATTER = {w: np.array([np.random.default_rng(len(w) * 31 + i).uniform(120, 960),
+                           np.random.default_rng(i * 7 + 3).uniform(300, 1200)])
+            for i, w in enumerate(["小猫", "狗", "老虎", "兔子", "桌子", "椅子", "床", "累", "困", "饿", "香蕉", "橙子",
+                                   "手机", "公司", "男人", "女人", "国王", "女王"])}
+
+
+def sky_pos(w, scatter=0.0):
+    p = np.array(SKY_WORDS[w], float)
+    if scatter > 0:
+        p = p + (_SCATTER[w] - p) * scatter
+    return p
+
+
+def sky(F, a=1.0, groups=1.0, words=None, dim=None, glow=None, nebula=1.0, scatter=0.0):
+    """The sky of meaning: words as stars, neighbours in meaning close together, each family faintly joined.
+    scatter 1 puts every star somewhere random (before the sky has formed)."""
     if a <= 0.003:
         return
     dim = dim or {}
     glow = glow or {}
+    form = 1 - scatter
     for gk, grp in enumerate(SKY_GROUPS):
-        ga = a * smooth(ramp(groups, 0.12 * gk, 0.5))
+        ga = a * smooth(ramp(groups, 0.12 * gk, 0.5)) * smooth(ramp(form, 0.6, 0.4))
         if ga <= 0.003:
             continue
-        pts = np.array([SKY_WORDS[w] for w in grp], float)
+        pts = np.array([sky_pos(w, scatter) for w in grp], float)
         c = pts.mean(0)
         da = min(dim.get(w, 1.0) for w in grp)
         add_sprite(F, c[0], c[1], 110, mix(STEEL, GOLD, 0.3), 0.05 * ga * nebula * da)
         for i in range(len(pts) - 1):
             glow_poly(F, [pts[i], pts[i + 1]], mix(STEEL, IVORY, 0.4), 0.22 * ga * da, th=1, glow=0.3, sigma=2)
-    for w, p in SKY_WORDS.items():
+    for w in SKY_WORDS:
         if words is not None and w not in words:
             continue
         gk = next((k for k, grp in enumerate(SKY_GROUPS) if w in grp), 0)
         ga = a * smooth(ramp(groups, 0.12 * gk, 0.5)) if words is None else a
-        sky_word(F, w, SKY_WORDS[w], ga * dim.get(w, 1.0), glow=glow.get(w, 0.0))
+        sky_word(F, w, sky_pos(w, scatter), ga * dim.get(w, 1.0), glow=glow.get(w, 0.0))
 
 
 def arrow(F, p, q, col, a=1.0, th=2, head=16, glow=0.6):
@@ -792,8 +807,8 @@ def dot_chart(F, a=1.0, q=1.0, keys=None, focus=None, axes=1.0):
         st.line((DOT_O[0] + k * DOT_S, DOT_O[1] - 6), (DOT_O[0] + k * DOT_S, DOT_O[1] + 6))
         st.line((DOT_O[0] - 6, DOT_O[1] - k * DOT_S), (DOT_O[0] + 6, DOT_O[1] - k * DOT_S))
     st.light(F, mix(STEEL, IVORY, 0.4), 0.45 * aa)
-    serif("会累的", 28, 500, 0.08).draw(F, x1 + 12, DOT_O[1] + 10, DIM, aa)
-    serif("是个物件", 28, 500, 0.08).draw(F, DOT_O[0], y1 - 22, DIM, aa, align="center")
+    zh("会累的", 28, 500, 0.08).draw(F, x1 + 12, DOT_O[1] + 10, DIM, aa)
+    zh("是个物件", 28, 500, 0.08).draw(F, DOT_O[0], y1 - 22, DIM, aa, align="center")
     for k in range(1, 3):
         T(str(k), "stix", 22, None, per_char=False).draw(F, DOT_O[0] + k * DOT_S, DOT_O[1] + 34, DIM, aa,
                                                          align="center")
@@ -805,14 +820,14 @@ def dot_chart(F, a=1.0, q=1.0, keys=None, focus=None, axes=1.0):
             continue
         tip = dot_pt(v)
         arrow(F, DOT_O, tip, mix(STEEL, IVORY, 0.3), ka, th=2)
-        serif(f"{name}", 32, 500, 0.05).draw(F, tip[0] + 16, tip[1] - 8, IVORY, ka)
+        zh(f"{name}", 32, 500, 0.05).draw(F, tip[0] + 16, tip[1] - 8, IVORY, ka)
         T(f"K = ({v[0]:g}, {v[1]:g})", "stix_it", 26, None, per_char=False).draw(F, tip[0] + 16, tip[1] + 26, DIM, ka)
     if q > 0:
         tip = dot_pt(Q_VEC)
         arrow(F, DOT_O, DOT_O + (tip - DOT_O) * smooth(q), GOLD, a * smooth(q), th=3, head=20, glow=1.0)
         T("Q = (2, 0)", "stix_it", 32, None, per_char=False).draw(F, tip[0] + 40, tip[1] + 64, GOLD, a * smooth(q),
                                                                   align="center")
-        serif("「它」的问题：前面哪个东西会累？", 30, 500, 0.08).draw(F, CX, DOT_O[1] + 110, GOLD, a * smooth(q),
+        zh("「它」的问题：前面哪个东西会累？", 30, 500, 0.08).draw(F, CX, DOT_O[1] + 110, GOLD, a * smooth(q),
                                                          align="center")
 
 
@@ -829,7 +844,7 @@ def dot_sum(F, y, a=1.0, which=0, reveal=1.0):
         al = a * smooth(ramp(reveal, k / len(parts), 1.5 / len(parts)))
         T(p, f, sz, None, per_char=False).draw(F, x, y, c, al)
         x += w
-    serif(f"「它」的问题 · 「{name}」的标签", 28, 500, 0.08).draw(F, CX, y + 54, DIM, a, align="center")
+    zh(f"「它」的问题 · 「{name}」的标签", 28, 500, 0.08).draw(F, CX, y + 54, DIM, a, align="center")
 
 
 SOFT_ITEMS = [("小猫", 0.571), ("累", 0.210), ("跳上", 0.077), ("桌子", 0.028), ("其余 4 个", 0.114)]
@@ -886,8 +901,494 @@ def formula_parts(F, cx, y, a=1.0, lit=None, notes=1.0):
         yy = y2 + 92 + 66 * r
         hairline(F, s0 + 4, int(y2 + 24), s1 - 4, GOLD, 0.8 * a * on, th=2)
         glow_poly(F, [(xm, y2 + 28), (xm, yy - 34)], GOLD, 0.45 * a * on, th=1, glow=0.3, sigma=2)
-        lab = serif(labels[key], 32, 500, 0.08)
+        lab = zh(labels[key], 32, 500, 0.08)
         xl = min(max(xm, 80 + lab.width / 2), 950 - lab.width / 2)      # keep clear of the screen's edges
         if abs(xl - xm) > 2:
             glow_poly(F, [(xm, yy - 34), (xl, yy - 34)], GOLD, 0.45 * a * on, th=1, glow=0.3, sigma=2)
         lab.draw(F, xl, yy, GOLD, a * on, align="center")
+
+
+# ================================================================ v3b ===
+
+def chat(F, question, answer, n, t, a=1.0, y0=360, cand=True, cand_y=None):
+    """A chat: the question in a bubble, the answer appearing one character at a time; above the
+    newest character, a few candidates flicker - the model is guessing."""
+    if a <= 0.003:
+        return
+    qt = zh(question, 36, 500, 0.06)
+    bw = qt.width + 56
+    _rrect(F, 960 - bw, y0 - 50, 960, y0 + 22, mix(STEEL, IVORY, 0.4), 0.6 * a, r=20, glow=0.2, fill=0.06)
+    qt.draw(F, 960 - 28, y0 - 1, IVORY, a, align="right")
+    # wrap the answer to the column
+    x0, w, lh, size = 120, 840, 62, 40
+    lines, cur = [], ""
+    for ch in answer:
+        if zh(cur + ch, size, 400, 0.06).width > w:
+            lines.append(cur)
+            cur = ""
+        cur += ch
+    lines.append(cur)
+    k = 0
+    last = None
+    yb = y0 + 140
+    for li, line in enumerate(lines):
+        tx = zh(line, size, 400, 0.06)
+        for m, dx, dy in tx.items:
+            u = n - k
+            k += 1
+            if u <= 0:
+                break
+            al = a * min(1.0, u)
+            blend(F, m, x0 + dx, yb + li * lh + dy, IVORY, al)
+            last = (x0 + dx + m.shape[1], yb + li * lh)
+    if cand and last is not None and n < len(answer):
+        # the guess for the next character, re-drawn every few frames
+        pool = "的是了在光气蓝红空色线时们中更会被散射眼睛从方向"
+        rng = np.random.default_rng(int(t * 6))
+        nxt = answer[min(int(n), len(answer) - 1)]
+        others = [c for c in rng.choice(list(pool), 4) if c != nxt][:2]
+        p0 = rng.uniform(0.45, 0.8)
+        ps = sorted(rng.uniform(0.04, (1 - p0) / 2, 2), reverse=True)
+        py = cand_y if cand_y is not None else 1010
+        zh("下一个字", 28, 500, 0.1).draw(F, 160, py - 56, DIM, 0.9 * a)
+        for j, (c, pr) in enumerate(zip([nxt] + others, [p0] + ps)):
+            yy = py + 58 * j
+            col = GOLD if j == 0 else mix(STEEL, IVORY, 0.4)
+            zh(c, 38, 500, 0).draw(F, 180, yy, col if j == 0 else IVORY, 0.95 * a, align="center")
+            E.add_light(F, np.full((18, max(1, int(560 * pr))), 1.0, np.float32), 222, yy - 22, col,
+                        (0.55 if j == 0 else 0.3) * a)
+            T(f"{round(100 * pr)}%", "stix", 30, None, per_char=False).draw(F, 236 + 560 * pr, yy, col if j == 0 else DIM,
+                                                                            0.9 * a)
+    if last is not None and (t * 1.6) % 1 < 0.6:
+        hairline(F, last[0] + 4, int(last[1] + 6), last[0] + 26, GOLD, 0.9 * a, th=3)
+
+
+CHAT_Q = "为什么天空是蓝色的？"
+CHAT_A = ("阳光里有各种颜色的光。穿过大气时，波长短的蓝光，比红光更容易被空气分子散射，"
+          "从四面八方进入我们的眼睛，所以天空看起来是蓝色的。")
+
+
+def numcol(F, x, y, vals, n, a=1.0, size=34, gap=46, gold=False):
+    """A column of numbers in brackets, the first n shown."""
+    if a <= 0.003:
+        return
+    shown = vals[:max(0, int(n))]
+    for i, v in enumerate(shown):
+        txt = f"{v:+.2f}".replace("+", " ").replace("-", "\u2212")
+        T(txt, "stix", size, None, per_char=False).draw(F, x, y + gap * i, GOLD if gold else IVORY,
+                                                         a * min(1.0, n - i), align="right")
+    h = gap * max(1, len(shown))
+    st = E.Stroke(x - 130, y - size - 6, x + 30, y + h)
+    st.poly([(x - 104, y - size), (x - 116, y - size), (x - 116, y + h - gap + 12), (x - 104, y + h - gap + 12)])
+    st.poly([(x + 6, y - size), (x + 18, y - size), (x + 18, y + h - gap + 12), (x + 6, y + h - gap + 12)])
+    st.light(F, mix(STEEL, IVORY, 0.5), 0.7 * a)
+
+
+def matrix(F, x, y, cols, rows, cell, label, a=1.0, seed=0, t=0.0, shimmer=0.0, col=None, sub=None):
+    """A weight matrix: a grid of little cells whose brightness is the number stored there."""
+    if a <= 0.003:
+        return
+    rng = np.random.default_rng(seed)
+    v = rng.uniform(0, 1, (rows, cols))
+    if shimmer > 0:
+        v = np.clip(v + shimmer * 0.25 * np.sin(t * 3 + rng.uniform(0, 6.28, (rows, cols))), 0, 1)
+    c = col if col is not None else mix(STEEL, IVORY, 0.4)
+    img = np.zeros((rows * cell, cols * cell), np.float32)
+    for i in range(rows):
+        for j in range(cols):
+            img[i * cell + 1:(i + 1) * cell - 1, j * cell + 1:(j + 1) * cell - 1] = 0.15 + 0.85 * v[i, j]
+    E.add_light(F, img, x, y, c, 0.30 * a)
+    _rrect(F, x - 6, y - 6, x + cols * cell + 6, y + rows * cell + 6, c, 0.55 * a, r=6, glow=0.2)
+    lab = T(label, "stix_it", 34, None, per_char=False)
+    lab.draw(F, x + cols * cell / 2 - (8 if sub else 0), y + rows * cell + 46, c, a, align="center")
+    if sub:
+        T(sub, "stix_it", 22, None, per_char=False).draw(F, x + cols * cell / 2 + lab.width / 2 - 6,
+                                                         y + rows * cell + 54, c, a)
+
+
+def vec(F, x, y, n, cell, label, col, a=1.0, seed=0, label_zh=None):
+    """A short vector drawn as a column of cells, with its letter (and meaning) underneath."""
+    if a <= 0.003:
+        return
+    rng = np.random.default_rng(seed)
+    v = rng.uniform(0.2, 1.0, n)
+    img = np.zeros((n * cell, cell), np.float32)
+    for i in range(n):
+        img[i * cell + 2:(i + 1) * cell - 2, 2:cell - 2] = v[i]
+    E.add_light(F, img, x, y, col, 0.45 * a)
+    _rrect(F, x - 4, y - 4, x + cell + 4, y + n * cell + 4, col, 0.7 * a, r=5, glow=0.4)
+    T(label, "stix_it", 44, None, per_char=False).draw(F, x + cell / 2, y + n * cell + 56, col, a, align="center")
+    if label_zh:
+        zh(label_zh, 28, 500, 0.06).draw(F, x + cell / 2, y + n * cell + 100, IVORY, 0.9 * a, align="center")
+
+
+# --------------------------------------------------------- the detective ---
+
+BOOK = (110, 330, 970, 1010)
+CLUES = [("左撇子", 0, 2), ("十点的雨", 0, 6), ("鞋底的红泥", 1, 1), ("改过的遗嘱", 1, 4), ("没响的狗", 0, 9)]
+
+
+def _book_maps():
+    if "book" not in _PAGE_CACHE:
+        x0, y0, x1, y1 = BOOK
+        w, h = x1 - x0, y1 - y0
+        yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+        spine = np.exp(-((xx - w / 2) / 26) ** 2)
+        lamp = 0.68 + 0.32 * np.exp(-(((xx - w * 0.4) / w) ** 2 + ((yy - h * 0.3) / h) ** 2)) - 0.35 * spine
+        _PAGE_CACHE["book"] = lamp.astype(np.float32)
+    return _PAGE_CACHE["book"]
+
+
+def book(F, a=1.0, clues=0.0, threads=0.0, blank_a=1.0, t=0.0):
+    """An open detective novel lit by a lamp; the last line ends '凶手是＿＿'.  Clues light up and
+    threads run from the blank back to each of them."""
+    if a <= 0.003:
+        return
+    x0, y0, x1, y1 = BOOK
+    lamp = _book_maps()
+    reg = F[y0:y1, x0:x1]
+    reg[:] = reg * (1 - a) + (PAPER * 0.55 * lamp[..., None]) * a
+    rng = np.random.default_rng(12)
+    w = x1 - x0
+    rows = 12
+    clue_pos = {}
+    for side in (0, 1):
+        px0 = x0 + 50 + side * (w / 2)
+        px1 = px0 + w / 2 - 100
+        for r in range(rows):
+            yy = y0 + 70 + 46 * r
+            if side == 1 and r == rows - 1:
+                continue
+            xx = px0
+            cl = [c for c in CLUES if c[1] == side and c[2] == r]
+            while xx < px1:
+                wd = rng.uniform(22, 70)
+                if cl and xx > px0 + 40 and (side, r) not in clue_pos:
+                    tx = zh(cl[0][0], 26, 500, 0.02)
+                    clue_pos[(side, r)] = (xx + tx.width / 2, yy - 8, tx, xx)
+                    xx += tx.width + 10
+                    continue
+                hairline(F, xx, int(yy - 6), min(xx + wd, px1), INKC, 0.25 * a, th=5)
+                xx += wd + 8
+    # the clues
+    pts = []
+    for (side, r), (cx_, cy_, tx, xs) in clue_pos.items():
+        on = smooth(ramp(clues, 0.15 * len(pts), 0.4))
+        if on > 0:
+            blend(F, np.full((34, int(tx.width + 12)), 1.0, np.float32), xs - 6, cy_ - 22, GOLD, 0.45 * a * on)
+        tx.draw(F, xs, cy_ + 6, INKC, a)
+        pts.append(np.array([cx_, cy_ - 4]))
+    # the last line
+    bx = x0 + w / 2 + 50
+    by = y0 + 70 + 46 * (rows - 1)
+    tl = zh("凶手是", 34, 600, 0.04)
+    tl.draw(F, bx, by + 4, INKC, a)
+    bl0 = bx + tl.width + 10
+    if blank_a > 0:
+        blend(F, np.full((3, 130), 1.0, np.float32), bl0, by + 8, GOLD, a * blank_a)
+        if (t * 1.6) % 1 < 0.6:
+            blend(F, np.full((34, 3), 1.0, np.float32), bl0 + 4, by - 26, GOLD, a * blank_a)
+    if threads > 0:
+        src = np.array([bl0 + 65, by - 12])
+        for k, p in enumerate(pts):
+            g = smooth(ramp(threads, 0.12 * k, 0.5))
+            if g > 0:
+                thread(F, src, p, 0.8 * a, bow=60 if p[0] < src[0] else -40, grow=g)
+
+
+# ------------------------------------------------------------ the sky laws ---
+
+def kepler(F, cx, cy, a=1.0, dots=1.0, fit=0.0, t=0.0):
+    """Tycho's observations as scattered marks; Kepler's ellipse drawn through them, the Sun at a focus."""
+    if a <= 0.003:
+        return
+    A_, e = 330, 0.62
+    B_ = A_ * math.sqrt(1 - e * e)
+    c = A_ * e
+    sun = np.array([cx + c, cy])
+    orb(F, sun[0], sun[1], 10, GOLD, a)
+    rng = np.random.default_rng(1601)
+    th = np.sort(rng.uniform(0, 2 * math.pi, 46))
+    for k, tt in enumerate(th):
+        g = smooth(ramp(dots, k / len(th) * 0.8, 0.2))
+        if g <= 0:
+            continue
+        p = np.array([cx + A_ * math.cos(tt), cy + B_ * math.sin(tt)]) + rng.normal(0, 5, 2)
+        s2 = E.Stroke(p[0] - 10, p[1] - 10, p[0] + 11, p[1] + 11)
+        s2.line((p[0] - 7, p[1]), (p[0] + 7, p[1]))
+        s2.line((p[0], p[1] - 7), (p[0], p[1] + 7))
+        s2.light(F, mix(STEEL, IVORY, 0.5), 0.8 * a * g)
+    if fit > 0:
+        u = np.linspace(0, 2 * math.pi * min(1.0, fit), max(3, int(160 * fit)))
+        pts = np.column_stack([cx + A_ * np.cos(u), cy + B_ * np.sin(u)])
+        glow_poly(F, pts, GOLD, 0.9 * a, th=2, glow=0.8, sigma=4)
+        if fit >= 1:
+            ang = t * 0.9
+            orb(F, cx + A_ * math.cos(ang), cy + B_ * math.sin(ang), 5, IVORY, a)
+
+
+def newton(F, cx, y, a=1.0):
+    """F = G m₁m₂ / r², set in STIX."""
+    if a <= 0.003:
+        return
+    sz = 80
+    parts = [("F", "stix_it", 0, sz), (" = ", "stix", 0, sz), ("G", "stix_it", 0, sz)]
+    w0 = sum(T(p, f, s_, None, per_char=False).width for p, f, _, s_ in parts)
+    num = [("m", "stix_it", 0, 64), ("1", "stix", 14, 40), ("m", "stix_it", 0, 64), ("2", "stix", 14, 40)]
+    wn = sum(T(p, f, s_, None, per_char=False).width for p, f, _, s_ in num)
+    den = [("r", "stix_it", 0, 64), ("2", "stix", -26, 40)]
+    wd = sum(T(p, f, s_, None, per_char=False).width for p, f, _, s_ in den)
+    wf = max(wn, wd) + 20
+    x = cx - (w0 + wf) / 2
+    for p, f, dy, s_ in parts:
+        tx = T(p, f, s_, None, per_char=False)
+        tx.draw(F, x, y + dy, IVORY, a)
+        x += tx.width
+    xn = x + (wf - wn) / 2
+    for p, f, dy, s_ in num:
+        tx = T(p, f, s_, None, per_char=False)
+        tx.draw(F, xn, y - 48 + dy, IVORY, a)
+        xn += tx.width
+    hairline(F, x, int(y - 24), x + wf, IVORY, a, th=3)
+    xd = x + (wf - wd) / 2
+    for p, f, dy, s_ in den:
+        tx = T(p, f, s_, None, per_char=False)
+        tx.draw(F, xd, y + 46 + dy, IVORY, a)
+        xd += tx.width
+
+
+# ------------------------------------------------------------ many cats ---
+
+CAT_RING = [("sit", 230, 640, 200, False), ("sleep", 820, 600, 230, True), ("sit", 830, 1050, 170, True),
+            ("sleep", 250, 1090, 200, False), ("sit", 540, 560, 150, False)]
+
+
+def many_cats(F, a=1.0, gather=0.0):
+    """Five different cats; as they gather they fade into one character."""
+    for k, (pose, x, g, s_, flip) in enumerate(CAT_RING):
+        ca = a * (1 - smooth(ramp(gather, 0.1 + 0.08 * k, 0.5)))
+        if ca <= 0.003:
+            continue
+        X = x + (CX - x) * 0.6 * smooth(gather)
+        G_ = g + (800 - g) * 0.6 * smooth(gather)
+        fig = cat_figure(pose, round(X), round(G_), s_)
+        out = fig["outline"].copy()
+        if flip:
+            out[:, 0] = 2 * X - out[:, 0]
+        A.engraved(F, out, mix(mix(STEEL, IVORY, 0.5), GOLD, 0.3), ca * 0.85, form_a=0.4, fill=0.03)
+    ga = a * smooth(ramp(gather, 0.45, 0.5))
+    if ga > 0:
+        add_sprite(F, CX, 760, 160, GOLD, 0.18 * ga)
+        zh("猫", 240, 500, 0).draw(F, CX, 850, GOLD, ga, align="center")
+
+
+# --------------------------------------------------------------- starlings ---
+
+_BOIDS = {}
+
+
+def boids(n=2000, frames=360, seed=7):
+    """Starlings: each bird follows only its seven nearest neighbours (plus a gentle pull towards a
+    slowly wandering centre).  Positions for every frame, computed once and cached."""
+    key = (n, frames, seed)
+    if key in _BOIDS:
+        return _BOIDS[key]
+    import os
+    path = os.path.join(os.path.dirname(__file__), "build", f"boids2_{n}_{frames}_{seed}.npy")
+    if os.path.exists(path):
+        _BOIDS[key] = np.load(path)
+        return _BOIDS[key]
+    from scipy.spatial import cKDTree
+    rng = np.random.default_rng(seed)
+    p = rng.normal(0, 1, (n, 2)) * [260, 90] + [540, 760]
+    v = rng.normal(0, 1, (n, 2)) * 0.6 + [3.2, 0.4]
+    out = np.zeros((frames, n, 2), np.float32)
+    warm = 90
+    for f in range(frames + warm):
+        tr = cKDTree(p)
+        d, idx = tr.query(p, k=8)
+        nb = idx[:, 1:]
+        align = v[nb].mean(1) - v
+        coh = p[nb].mean(1) - p
+        diff = p[:, None, :] - p[nb]
+        close = d[:, 1:] < 16
+        sep = (diff / (d[:, 1:, None] ** 2 + 1) * close[..., None]).sum(1) * 16
+        ang = f * 0.018
+        centre = np.array([540 + 250 * math.sin(ang * 1.3), 780 + 230 * math.sin(ang * 0.8 + 1.0)])
+        pull = (centre - p) * 0.0009
+        turn = np.array([-v[:, 1], v[:, 0]]).T * (0.012 * math.sin(f * 0.035))
+        v = v + align * 0.16 + coh * 0.0015 + sep * 0.08 + pull + turn + rng.normal(0, 0.05, v.shape)
+        sp = np.linalg.norm(v, axis=1, keepdims=True) + 1e-6
+        v = v / sp * np.clip(sp, 2.6, 4.6)
+        p = p + v
+        if f >= warm:
+            out[f - warm] = p
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    np.save(path, out)
+    _BOIDS[key] = out
+    return out
+
+
+_FLOCK = {}
+
+
+def murmuration(F, t, a=1.0, n=8000):
+    """A murmuration seen from the ground: the flock is a thin, bending sheet in three dimensions.
+    Where the sheet turns edge-on it crowds into dark-dense ribbons; where it faces us it thins out."""
+    if a <= 0.003:
+        return
+    import cv2
+    key = n
+    if key not in _FLOCK:
+        rng = np.random.default_rng(1967)
+        uv = rng.uniform(-1, 1, (n * 3, 2))
+        th = np.arctan2(uv[:, 1], uv[:, 0])
+        rr = np.hypot(uv[:, 0], uv[:, 1] * 1.6)
+        edge = 0.95 + 0.18 * np.sin(3 * th + 0.8) + 0.10 * np.sin(5 * th + 2.1)   # an irregular, living outline
+        uv = uv[rr < edge][:n]
+        n = len(uv)
+        _FLOCK[key] = (uv, rng.normal(0, 1, (n, 3)), rng.uniform(0, 6.28, n))
+    uv, jit, ph = _FLOCK[key]
+    n = len(uv)
+    u, v = uv[:, 0], uv[:, 1]
+    # the sheet bends and ripples
+    x = u * 430 * (1 + 0.25 * math.sin(t * 0.37))
+    y = v * 200 + 90 * np.sin(1.7 * u + t * 0.9) + 40 * np.sin(3.1 * u - t * 1.3)
+    z = 160 * np.sin(2.2 * u + t * 0.6) * np.cos(1.5 * v - t * 0.4) + 80 * v * math.sin(t * 0.5)
+    P3 = np.column_stack([x, y, z]) + jit * [6, 6, 6] + np.column_stack([np.sin(ph + t * 2.0) * 3,
+                                                                         np.cos(ph + t * 1.7) * 3, np.zeros(n)])
+    # the whole flock turns
+    ax, ay, az = 0.9 * math.sin(t * 0.31), 1.1 * math.sin(t * 0.23 + 0.7), 0.35 * math.sin(t * 0.19)
+    Rx = np.array([[1, 0, 0], [0, math.cos(ax), -math.sin(ax)], [0, math.sin(ax), math.cos(ax)]])
+    Ry = np.array([[math.cos(ay), 0, math.sin(ay)], [0, 1, 0], [-math.sin(ay), 0, math.cos(ay)]])
+    Rz = np.array([[math.cos(az), -math.sin(az), 0], [math.sin(az), math.cos(az), 0], [0, 0, 1]])
+    P3 = P3 @ (Rz @ Ry @ Rx).T
+    cx = 540 + 120 * math.sin(t * 0.21)
+    cy = 760 + 80 * math.sin(t * 0.27 + 1.0)
+    px, py = P3[:, 0] + cx, P3[:, 1] + cy
+    h, w = F.shape[:2]
+    img = np.zeros((h, w), np.float32)
+    xi = np.clip(px.astype(int), 0, w - 1)
+    yi = np.clip(py.astype(int), 0, h - 1)
+    np.add.at(img, (yi, xi), 1.0)
+    img = cv2.GaussianBlur(img, (0, 0), 0.9)
+    F += (np.clip(img, 0, 1.2) * 1.4 * a)[..., None] * mix(IVORY, GOLD, 0.2)
+
+
+# ----------------------------------------------------------------- neurons ---
+
+def _branch(out, p, ang, length, width, depth, rng):
+    q = p + length * np.array([math.cos(ang), math.sin(ang)])
+    mid = (p + q) / 2 + rng.normal(0, length * 0.08, 2)
+    u = np.linspace(0, 1, 8)[:, None]
+    out.append(((1 - u) ** 2 * p + 2 * (1 - u) * u * mid + u ** 2 * q, width))
+    if depth > 0:
+        for s_ in (-1, 1):
+            _branch(out, q, ang + s_ * rng.uniform(0.25, 0.6), length * rng.uniform(0.6, 0.78), width * 0.7,
+                    depth - 1, rng)
+
+
+def neuron(x, y, s, seed=0):
+    """A nerve cell drawn after Ramón y Cajal: a body, branching dendrites, one long axon."""
+    rng = np.random.default_rng(seed)
+    out = []
+    for k in range(6):
+        ang = -math.pi / 2 + (k - 2.5) * 0.55 + rng.normal(0, 0.12)
+        _branch(out, np.array([x, y]), ang, s * rng.uniform(0.26, 0.34), 1.6, 3, rng)
+    ax = [np.array([x, y])]
+    ang = math.pi / 2 + rng.normal(0, 0.1)
+    for k in range(10):
+        ang += rng.normal(0, 0.12)
+        ax.append(ax[-1] + s * 0.11 * np.array([math.cos(ang), math.sin(ang)]))
+    out.append((np.array(ax), 1.2))
+    end = ax[-1]
+    for k in range(4):
+        _branch(out, end, math.pi / 2 + (k - 1.5) * 0.5, s * 0.12, 0.8, 1, rng)
+    return out, np.array([x, y]), ax
+
+
+def draw_neuron(F, nrn, a=1.0, grow=1.0, col=None, fire=None):
+    if a <= 0.003:
+        return
+    segs, soma, ax = nrn
+    c = col if col is not None else mix(mix(STEEL, IVORY, 0.5), GOLD, 0.2)
+    n = len(segs)
+    for i, (pts, wd) in enumerate(segs):
+        g = smooth(ramp(grow, 0.5 * i / n, 0.5))
+        if g <= 0:
+            continue
+        k = max(2, int(len(pts) * g))
+        glow_poly(F, pts[:k], c, 0.7 * a, th=1, glow=0.3, sigma=2)
+    orb(F, soma[0], soma[1], 7, c, a * smooth(grow))
+    if fire is not None and 0 <= fire <= 1:
+        i = fire * (len(ax) - 1)
+        j = int(i)
+        p = ax[j] + (ax[min(j + 1, len(ax) - 1)] - ax[j]) * (i - j)
+        orb(F, p[0], p[1], 6, GOLD, a)
+
+
+# ------------------------------------------------------------ dials, counter ---
+
+def dials(F, x0, y0, cols, rows, gap, a=1.0, t=0.0, turn=0.0, seed=3):
+    """Rows of tiny dials - the model's numbers - each turned a little at every wrong guess."""
+    if a <= 0.003:
+        return
+    rng = np.random.default_rng(seed)
+    base = rng.uniform(0, 2 * math.pi, (rows, cols))
+    rate = rng.normal(0, 1, (rows, cols))
+    r = gap * 0.34
+    st = E.Stroke(x0 - gap, y0 - gap, x0 + cols * gap + gap, y0 + rows * gap + gap)
+    for i in range(rows):
+        for j in range(cols):
+            cx_, cy_ = x0 + j * gap, y0 + i * gap
+            ang = base[i, j] + turn * rate[i, j] * 0.6 + 0.04 * math.sin(t * 3 + base[i, j])
+            st.circle((cx_, cy_), r, th=1)
+            st.line((cx_, cy_), (cx_ + r * 0.9 * math.cos(ang), cy_ + r * 0.9 * math.sin(ang)))
+    st.light(F, mix(STEEL, IVORY, 0.45), 0.55 * a)
+
+
+def counter(F, value, cx, y, a=1.0, size=96, col=None):
+    """A big number with thousands separators."""
+    if a <= 0.003:
+        return
+    txt = f"{int(value):,}"
+    T(txt, "stix", size, None, per_char=False).draw(F, cx, y, col if col is not None else GOLD, a, align="center")
+
+
+def text_stream(F, a=1.0, t=0.0, mask=True, x0=110, x1=970, y0=380, rows=12, gap=62, speed=40.0):
+    """Lines of text sliding upwards, each ending in a covered word the model must guess."""
+    if a <= 0.003:
+        return
+    rng_seed = 21
+    off = (t * speed) % gap
+    first = int(t * speed // gap)
+    for r in range(rows + 1):
+        idx = first + r
+        rng = np.random.default_rng(rng_seed + idx)
+        yy = y0 + r * gap - off
+        fade = smooth(ramp(yy, y0 - 10, 80)) * (1 - smooth(ramp(yy, y0 + rows * gap - 120, 110)))
+        if fade <= 0.003:
+            continue
+        xx = x0
+        end = x1 - rng.uniform(0, 260)
+        while xx < end - 60:
+            wd = rng.uniform(26, 90)
+            hairline(F, xx, int(yy), min(xx + wd, end - 60), mix(STEEL, IVORY, 0.4), 0.35 * a * fade, th=6)
+            xx += wd + 10
+        if mask:
+            _rrect(F, end - 50, yy - 14, end - 6, yy + 18, GOLD, 0.8 * a * fade, r=5, glow=0.4, fill=0.15)
+
+
+def bleu(F, a=1.0, grow=1.0, y0=820):
+    """English-to-German, WMT 2014: the best before, and the Transformer."""
+    if a <= 0.003:
+        return
+    items = [("此前最好的方法", 26.4, mix(STEEL, IVORY, 0.4)), ("Transformer", 28.4, GOLD)]
+    for i, (lab, v, c) in enumerate(items):
+        y = y0 + 120 * i
+        g = smooth(ramp(grow, 0.3 * i, 0.6))
+        (zh(lab, 34, 500, 0.06) if i == 0 else T(lab, "inter", 34, 500, per_char=False)).draw(F, 120, y - 30, IVORY, a)
+        bw = 640 * (v - 20) / 10 * g
+        E.add_light(F, np.full((26, max(1, int(bw))), 1.0, np.float32), 120, y - 8, c, 0.55 * a)
+        T(f"{v:.1f}", "stix", 40, None, per_char=False).draw(F, 140 + bw, y + 18, c, a * g)
+    zh("英译德 · BLEU 分数（越高越好）", 26, 500, 0.06).draw(F, 120, y0 + 250, DIM, a)

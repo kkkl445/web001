@@ -11,8 +11,10 @@ from multiprocessing import Pool
 from pathlib import Path
 
 import cv2
+import numpy as np
 
 import scenes as S
+import style as ST
 from style import ROOT, H, W, finalize, make_background, make_grain, twinkle
 from timeline import DURATION, FPS, SCENES, START
 
@@ -36,11 +38,30 @@ def frame(fi):
             break
     F = _state["bg"].copy()
     twinkle(F, _state["tw"], g)
-    S.SCENE_FUNCS[name](F, g - START[name], g, fi)
-    fade = min(1.0, g / 1.0) * min(1.0, (DURATION - g) / 1.8)
+    # every shot drifts slowly towards the viewer unless the scene asks for its own camera
+    lt = g - START[name]
+    ST.CAMERA.clear()
+    ST.camera(scale=1.0 + 0.035 * lt / dur)
+    ST.DEFER[0] = True
+    S.SCENE_FUNCS[name](F, lt, g, fi)
+    F = _apply_camera(F)
+    ST.flush_subtitles(F)
+    fade = min(1.0, g / 0.12) * min(1.0, (DURATION - g) / 1.8)
     if fade < 1:
         F *= max(fade, 0.0)
     return finalize(F, _state["vig"], _state["grain"][fi % len(_state["grain"])] * fade)
+
+
+def _apply_camera(F):
+    c = ST.CAMERA
+    s, x, y, dx, dy = c.get("scale", 1.0), c.get("x", W / 2), c.get("y", 860), c.get("dx", 0.0), c.get("dy", 0.0)
+    if abs(s - 1) < 1e-4 and abs(dx) < 0.05 and abs(dy) < 0.05 and c.get("blur", 0) <= 0:
+        return F
+    M = np.array([[s, 0, (1 - s) * x + dx], [0, s, (1 - s) * y + dy]], np.float32)
+    out = cv2.warpAffine(F, M, (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+    if c.get("blur", 0) > 0.3:
+        out = cv2.GaussianBlur(out, (0, 0), c["blur"])
+    return out
 
 
 def _chunk(args):
