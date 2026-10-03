@@ -1,8 +1,6 @@
-"""Visual system for the tunnelling film: a light Swiss-editorial look.
-
-Reuses the compositing engine from ../quantum-video (loaded by file path so
-module names there never shadow this folder's own timeline/scenes/...).
-"""
+"""Cinematic 'deep' visual system: darkness, starlight, one idea per beat,
+bilingual subtitles, gold glow.  Reuses the compositing engine from
+../quantum-video (loaded by file path so module names never collide)."""
 
 import importlib.util
 import math
@@ -17,239 +15,246 @@ _spec = importlib.util.spec_from_file_location("engine", ROOT.parent / "quantum-
 E = importlib.util.module_from_spec(_spec)
 sys.modules["engine"] = E
 _spec.loader.exec_module(E)
-
 E.FONT_DIR = ROOT / "fonts"
-E.FONT_FILES.update(inter="InterTight.ttf", mono="IBMPlexMono-Regular.ttf", mono_m="IBMPlexMono-Medium.ttf")
 
 W, H = E.W, E.H
-T, R, Stroke, blend = E.T, E.R, E.Stroke, E.blend
-ramp, smooth, ease_out, ease_in_out, ease_in, window, lerp = (E.ramp, E.smooth, E.ease_out, E.ease_in_out,
-                                                             E.ease_in, E.window, E.lerp)
+T, R, Stroke, blend, add_light, add_sprite, blur = E.T, E.R, E.Stroke, E.blend, E.add_light, E.add_sprite, E.blur
+ramp, smooth, ease_out, ease_in_out, ease_in, window, lerp, mix = (E.ramp, E.smooth, E.ease_out, E.ease_in_out,
+                                                                  E.ease_in, E.window, E.lerp, E.mix)
 rgb = E.rgb
 
-PAPER = rgb("f2ede3")
-INK = rgb("171615")
-GRAPHITE = rgb("6f6a62")
-RULE = rgb("cbc3b4")
-VERMILION = rgb("e2472f")
-TINT = rgb("f6d9cf")
-BLUE = rgb("2d5aa6")
-
-LX = 160
-GRID_R = 1760
+IVORY = rgb("ece6d8")
+DIM = rgb("8e9098")
+GOLD = rgb("e6b86a")
+AMBER = rgb("ff9a3c")
+CYAN = rgb("72d6ff")
+BLUE = rgb("2a5cff")
+WHITE = rgb("ffffff")
+CRIMSON = rgb("7a1d2c")
 
 
-# --------------------------------------------------------------- paper ---
+# ---------------------------------------------------------- background ---
 
-def make_paper(seed=5):
+def make_background(seed=4):
     rng = np.random.default_rng(seed)
-    F = np.empty((H, W, 3), np.float32)
-    F[:] = PAPER
-    low = cv2.GaussianBlur(rng.normal(0, 1, (H // 8, W // 8)).astype(np.float32), (0, 0), 6)
-    low = cv2.resize(low, (W, H), interpolation=cv2.INTER_CUBIC)
-    fib = cv2.GaussianBlur(rng.normal(0, 1, (H, W)).astype(np.float32), (0, 0), sigmaX=3.0, sigmaY=0.6)
-    tex = low / (np.abs(low).max() + 1e-6) * 0.014 + fib / (np.abs(fib).max() + 1e-6) * 0.02
-    F += tex[..., None] * np.array([1.0, 0.97, 0.92], np.float32)
     yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
-    r2 = ((xx - W / 2) / (W / 2)) ** 2 + ((yy - H / 2) / (H / 2)) ** 2
-    vig = (1 - 0.075 * np.clip(r2 - 0.25, 0, None)).astype(np.float32)
-    return F, vig
+    F = np.empty((H, W, 3), np.float32)
+    F[:] = rgb("030407")
+    d = ((xx - 960) / 1050) ** 2 + ((yy - 500) / 640) ** 2
+    F += (rgb("0b1322") - rgb("030407")) * np.exp(-d * 1.4)[..., None]
+    stars = np.zeros((H, W), np.float32)
+    n = 900
+    sx, sy = rng.uniform(0, W, n), rng.uniform(0, H, n)
+    br = rng.power(4, n) * 0.22 + 0.02
+    for x, y, b in zip(sx, sy, br):
+        cv2.circle(stars, (int(x * 16), int(y * 16)), int(rng.uniform(0.5, 1.2) * 16), float(b), -1,
+                   cv2.LINE_AA, 4)
+    F += stars[..., None] * np.array([0.85, 0.9, 1.0], np.float32)
+    r = np.sqrt(((xx - W / 2) / (W / 2)) ** 2 + ((yy - H / 2) / (H / 2)) ** 2)
+    vig = (1 - 0.62 * np.clip((r - 0.45) / 0.95, 0, 1) ** 1.5).astype(np.float32)
+    tw = dict(x=rng.uniform(0, W, 70), y=rng.uniform(0, H, 70), f=rng.uniform(0.15, 0.6, 70),
+              p=rng.uniform(0, 6.28, 70), a=rng.uniform(0.1, 0.35, 70))
+    return F, vig, tw
 
 
-def make_grain(n=6, amp=0.006, seed=9):
+def twinkle(F, tw, g, a=1.0):
+    k = 0.5 + 0.5 * np.sin(tw["f"] * g * 6.283 + tw["p"])
+    for x, y, b in zip(tw["x"], tw["y"], tw["a"] * k ** 3 * a):
+        add_sprite(F, x, y, 1.1, IVORY, b)
+
+
+def make_grain(n=8, amp=0.009, seed=8):
     rng = np.random.default_rng(seed)
-    return [rng.normal(0, amp, (H, W)).astype(np.float32) for _ in range(n)]
+    out = []
+    for _ in range(n):
+        g = rng.normal(0, amp, (H // 2, W // 2)).astype(np.float32)
+        out.append(cv2.resize(g, (W, H), interpolation=cv2.INTER_LINEAR))
+    return out
 
 
-def finalize(F, vig, grain):
+def finalize(F, vig, grain, bloom=1.0):
+    if bloom > 0:
+        small = cv2.resize(F, (480, 270), interpolation=cv2.INTER_AREA)
+        br = np.maximum(small - 0.42, 0)
+        b = cv2.GaussianBlur(br, (0, 0), 2.5) * 0.55 + cv2.GaussianBlur(br, (0, 0), 11) * 0.75
+        F += cv2.resize(b, (W, H), interpolation=cv2.INTER_LINEAR) * bloom
     F *= vig[..., None]
     F += grain[..., None]
+    knee = 0.8
+    hi = F > knee
+    if hi.any():
+        F[hi] = knee + (1 - knee) * (1 - np.exp(-(F[hi] - knee) / (1 - knee)))
     np.clip(F, 0, 1, out=F)
     return (F * 255 + 0.5).astype(np.uint8)
 
 
-def _pattern_dots(step=7, r=1.75):
-    p = np.zeros((H + step, W + step), np.uint8)
-    for y in range(0, H + step, step):
-        off = (step // 2) if (y // step) % 2 else 0
-        for x in range(off, W + step, step):
-            cv2.circle(p, (x * 16, y * 16), int(r * 16), 255, -1, cv2.LINE_AA, 4)
-    return p[:H, :W]
+# --------------------------------------------------------------- light ---
 
-
-def _pattern_hatch(step=9):
-    p = np.zeros((H, W), np.uint8)
-    for c in range(-H, W + H, step):
-        cv2.line(p, (c * 16, 0), ((c + H) * 16, H * 16), 255, 1, cv2.LINE_AA, 4)
-    return p
-
-
-DOTS = _pattern_dots()
-HATCH = _pattern_hatch()
-
-
-def pattern_fill(F, stroke, pattern, color, a):
-    """Fill the shape drawn in `stroke` with a print pattern (dots / hatching)."""
-    h, w = stroke.m.shape
-    x0, y0 = stroke.x0, stroke.y0
-    xs0, ys0 = max(x0, 0), max(y0, 0)
-    xs1, ys1 = min(x0 + w, W), min(y0 + h, H)
-    if xs0 >= xs1 or ys0 >= ys1:
+def orb(F, x, y, r, color, gain=1.0, core=WHITE):
+    if gain <= 0.003:
         return
-    m = stroke.m[ys0 - y0:ys1 - y0, xs0 - x0:xs1 - x0].astype(np.float32) / 255.0
-    pat = pattern[ys0:ys1, xs0:xs1].astype(np.float32) / 255.0
-    blend(F, m * pat, xs0, ys0, color, a)
+    add_sprite(F, x, y, r * 0.35, core, 1.2 * gain)
+    add_sprite(F, x, y, r, color, 0.55 * gain)
+    add_sprite(F, x, y, r * 3.2, color, 0.16 * gain)
 
 
-def rect(F, x, y, w, h, color, a=1.0):
-    if w >= 1 and h >= 1 and a > 0.002:
-        blend(F, np.full((int(h), int(w)), 255, np.uint8), x, y, color, a)
-
-
-# -------------------------------------------------------------- type -----
-
-def rise(F, text, x, y, color, a, t, t0, dur=0.7, stagger=0.0, align="left", clip_pad=None):
-    """Editorial line reveal: glyphs slide up from behind the baseline mask."""
-    if a <= 0.002:
+def glow_poly(F, pts, color, a=1.0, th=2, glow=0.6, sigma=5, bounds=None):
+    pts = np.asarray(pts, float)
+    if len(pts) < 2 or a <= 0.003:
         return
-    if align == "center":
-        x -= text.width / 2
-    elif align == "right":
-        x -= text.width
-    hmax = max((m.shape[0] for m, _, _ in text.items), default=0)
-    pad = clip_pad if clip_pad is not None else hmax * 0.28
-    clip_y = y + pad
-    for i, (m, dx, dy) in enumerate(text.items):
-        u = ease_out(ramp(t, t0 + i * stagger, dur))
-        if u <= 0:
-            continue
-        off = (1 - u) * hmax * 1.05
-        top = y + dy + off
-        vis = int(min(m.shape[0], max(0, math.floor(clip_y - top))))
-        if vis <= 0:
-            continue
-        blend(F, m[:vis], x + dx, top, color, a)
+    if bounds is None:
+        pad = sigma * 3 + 6
+        bounds = (pts[:, 0].min() - pad, pts[:, 1].min() - pad, pts[:, 0].max() + pad, pts[:, 1].max() + pad)
+    x0, y0, x1, y1 = [int(v) for v in bounds]
+    x0, y0, x1, y1 = max(x0, 0), max(y0, 0), min(x1, W), min(y1, H)
+    if x1 - x0 < 2 or y1 - y0 < 2:
+        return
+    s = Stroke(x0, y0, x1, y1)
+    s.poly(pts, th=th)
+    if glow > 0:
+        s.glow(F, color, glow * a, sigma)
+    s.light(F, mix(color, WHITE, 0.35), a)
 
 
-def mono(s, size=16, medium=False, tracking=0.08):
-    return T(s, "mono_m" if medium else "mono", size, None, tracking=tracking, per_char=False)
+def comet(F, hx, hy, direction, length, color, a=1.0, segs=14):
+    """Horizontal light streak with a bright head moving in `direction` (+1/-1)."""
+    if a <= 0.003:
+        return
+    for i in range(segs):
+        u0, u1 = i / segs, (i + 1) / segs
+        xa, xb = hx - direction * length * u0, hx - direction * length * u1
+        glow_poly(F, [(xa, hy), (xb, hy)], color, a * (1 - u0) ** 2, th=1, glow=0.5, sigma=3)
+    orb(F, hx, hy, 6, color, a)
 
 
-def _is_cjk(ch):
-    o = ord(ch)
-    return 0x2E80 <= o <= 0x9FFF or 0x3000 <= o <= 0x303F or 0xFF00 <= o <= 0xFFEF
+def hairline(F, x0, y, x1, color, a, th=1):
+    if a > 0.003 and x1 > x0:
+        blend(F, np.full((th, int(x1 - x0)), 255, np.uint8), x0, y, color, a)
 
 
-def mixed(s, size=15, tracking=0.08):
-    """Mono for Latin, Noto Sans SC for CJK, as one run of text."""
-    runs, cur, cj = [], "", None
-    for ch in s:
-        c = _is_cjk(ch)
-        if cj is not None and c != cj:
-            runs.append((cur, "sans" if cj else "mono", size, 400 if cj else None))
-            cur = ""
-        cur += ch
-        cj = c
-    if cur:
-        runs.append((cur, "sans" if cj else "mono", size, 400 if cj else None))
-    return R(runs, tracking=tracking, per_char=False)
+# ---------------------------------------------------------------- type ---
 
-
-def sans(s, size=32, wght=400, tracking=0.02):
-    return T(s, "sans", size, wght, tracking=tracking)
-
-
-def serif(s, size=72, wght=900, tracking=0.02):
+def serif(s, size, wght=400, tracking=0.0):
     return T(s, "serif", size, wght, tracking=tracking)
 
 
-def sci(F, value, x, y, size, color, a=1.0, align="left", digits=2):
-    """Big scientific readout, e.g. 1.4 x 10^-4 (Inter Tight)."""
-    if value >= 0.01:
-        s = f"{value * 100:.{max(0, digits - 1)}f}%"
-        t = T(s, "inter", size, 800, tracking=-0.01, per_char=False)
-        t.draw(F, x - (t.width if align == "right" else 0), y, color, a)
-        return
-    e = math.floor(math.log10(value))
-    mant = value / 10 ** e
-    base = T(f"{mant:.1f} × 10", "inter", size, 800, tracking=-0.01, per_char=False)
-    ex = T(f"−{-e}", "inter", int(size * 0.52), 800, tracking=0.0, per_char=False)
-    total = base.width + ex.width + size * 0.06
-    x0 = x - total if align == "right" else x
-    base.draw(F, x0, y, color, a)
-    ex.draw(F, x0 + base.width + size * 0.06, y - size * 0.42, color, a)
+def caps(s, size=12, tracking=0.32):
+    return T(s, "corm", size, 600, tracking=tracking, per_char=False)
 
 
-# ------------------------------------------------------------- chrome ----
-
-def crop_marks(F, a):
-    s = Stroke(0, 0, W, H)
-    for cx, cy, dx, dy in ((40, 40, 1, 1), (W - 40, 40, -1, 1), (40, H - 40, 1, -1), (W - 40, H - 40, -1, -1)):
-        s.line((cx, cy + dy * 14), (cx, cy + dy * 34))
-        s.line((cx + dx * 14, cy), (cx + dx * 34, cy))
-    s.blit(F, INK, 0.55 * a)
+def italic(s, size=22):
+    return T(s, "corm_it", size, 500, per_char=False)
 
 
-def header_footer(F, g, a, part, total_time):
-    if a <= 0.002:
-        return
-    sans("量子隧穿", 15, 500, tracking=0.2).draw(F, LX, 72, INK, 0.85 * a)
-    mono("QUANTUM TUNNELING", 14, tracking=0.16).draw(F, LX + 98, 72, GRAPHITE, 0.85 * a)
-    if part:
-        mono(f"PART {part:02d} / 05", 14, medium=True, tracking=0.16).draw(F, GRID_R, 72, INK, 0.85 * a,
-                                                                          align="right")
-    rect(F, LX, 92, GRID_R - LX, 1, INK, 0.5 * a)
-    rect(F, LX, 1004, GRID_R - LX, 1, INK, 0.5 * a)
-    mono("A SMALL IDEA", 14, tracking=0.16).draw(F, LX, 1032, GRAPHITE, 0.85 * a)
-    sans("一个小概念", 14, 400, tracking=0.2).draw(F, LX + 132, 1032, GRAPHITE, 0.85 * a)
-    tc = int(g)
-    tt = int(total_time)
-    mono(f"{tc // 60:02d}:{tc % 60:02d}  /  {tt // 60:02d}:{tt % 60:02d}", 14, tracking=0.12).draw(
-        F, GRID_R, 1032, GRAPHITE, 0.85 * a, align="right")
-    prog = min(max(g / total_time, 0), 1)
-    rect(F, LX, 1002, (GRID_R - LX) * prog, 3, VERMILION, 0.9 * a)
+def _char_blur(m, sigma):
+    pad = int(sigma * 3) + 1
+    mm = np.zeros((m.shape[0] + 2 * pad, m.shape[1] + 2 * pad), np.float32)
+    mm[pad:pad + m.shape[0], pad:pad + m.shape[1]] = m.astype(np.float32) / 255.0
+    return cv2.GaussianBlur(mm, (0, 0), sigma), pad
 
 
-def wipe(F, g, boundaries, dur=0.42):
-    """Solid vermilion panel sweeping across at each section boundary."""
-    for b in boundaries:
-        if b - dur <= g < b:
-            u = ease_in_out((g - (b - dur)) / dur)
-            rect(F, 0, 0, W * u, H, VERMILION)
-        elif b <= g < b + dur:
-            u = ease_in_out((g - b) / dur)
-            x0 = W * u
-            rect(F, x0, 0, W - x0, H, VERMILION)
+def caret(F, x, y, size, a, t, phase=0.0):
+    blink = 0.5 + 0.5 * math.cos((t - phase) * 2 * math.pi * 0.9)
+    blend(F, np.full((int(size * 0.95), 2), 255, np.uint8), x, y - size * 0.8, GOLD, a * blink)
 
 
-# ------------------------------------------------------------ layout -----
-
-def part_header(F, t, a, num, zh, en):
-    mono(f"PART {num:02d}", 16, medium=True, tracking=0.2).draw(F, LX, 168, VERMILION, a * smooth(ramp(t, 0.2, 0.5)))
-    rise(F, serif(zh, 74, 900, tracking=0.01), LX - 3, 262, INK, a, t, 0.35, dur=0.8, stagger=0.06)
-    mono(en.upper(), 15, tracking=0.18).draw(F, LX, 306, GRAPHITE, a * smooth(ramp(t, 0.9, 0.6)))
-    rect(F, LX, 334, 48 * ease_in_out(ramp(t, 1.0, 0.6)), 6, VERMILION, a)
-
-
-def body(F, t, a, lines, y0=420, dy=58):
-    """lines: (t_in, text, style, group).  Earlier groups fade to graphite."""
-    gstart = {}
-    for t_in, _, _, gidx in lines:
-        gstart[gidx] = min(gstart.get(gidx, 1e9), t_in)
-    y = y0
-    for t_in, s, style, gidx in lines:
-        later = [v for k, v in gstart.items() if k > gidx]
-        d = smooth(ramp(t, min(later), 0.8)) if later else 0.0
-        if style == "note":
-            rise(F, mixed(s, 18, tracking=0.06), LX, y - 6, GRAPHITE, a, t, t_in, dur=0.6, clip_pad=8)
-            y += 44
+def statement(F, s, cx, y, t, t_in, t_out=None, size=60, wght=400, tracking=0.2, cps=9.0, gold=(),
+              color=IVORY, a=1.0, cursor=False, align="center", fade_in=0.22):
+    """Typewriter line; characters dissolve (blur + drift) on the way out.
+    Returns x right after the full line (for a following blank)."""
+    tx = serif(s, size, wght, tracking)
+    x0 = cx - tx.width / 2 if align == "center" else cx
+    n = len(tx.items)
+    for i, (m, dx, dy) in enumerate(tx.items):
+        u = ease_out(ramp(t, t_in + i / cps, fade_in))
+        if u <= 0:
             continue
-        base = VERMILION if style == "accent" else INK
-        col = E.mix(base, GRAPHITE, 0.55 * d) if style != "accent" else E.mix(base, GRAPHITE, 0.35 * d)
-        rise(F, sans(s, 32, 500 if style == "accent" else 400), LX, y, col, a * (1 - 0.25 * d), t, t_in,
-             dur=0.75, stagger=0.012)
-        y += dy
+        col = GOLD if i in gold else color
+        al, off, sig = a * u, (1 - u) * 6, 0.0
+        if t_out is not None and t > t_out - 0.9:
+            v = smooth(ramp(t, t_out - 0.9 + i * 0.025, 0.6))
+            al *= 1 - v
+            off -= 14 * v
+            sig = 3.5 * v
+        if al <= 0.003:
+            continue
+        if sig > 0.3:
+            mm, pad = _char_blur(m, sig)
+            blend(F, mm, x0 + dx - pad, y + dy + off - pad, col, al)
+        else:
+            blend(F, m, x0 + dx, y + dy + off, col, al)
+    if cursor and n and t >= t_in:
+        k = min(n, int((t - t_in) * cps) + 1)
+        m, dx, dy = tx.items[k - 1]
+        typed_end = t_in + n / cps
+        al = a if t < typed_end + 0.3 else a * (0.5 + 0.5 * math.cos((t - typed_end) * 2 * math.pi * 0.9))
+        if t_out is not None:
+            al *= 1 - smooth(ramp(t, t_out - 0.9, 0.5))
+        blend(F, np.full((int(size * 0.95), 2), 255, np.uint8), x0 + dx + m.shape[1] + size * 0.12,
+              y - size * 0.8, GOLD, al)
+    return x0 + tx.width
 
 
-def fig_caption(F, t, a, s, t0=1.2):
-    rise(F, mixed(s, 15, tracking=0.08), 840, 948, GRAPHITE, a, t, t0, dur=0.6, clip_pad=6)
+def blank(F, x, y, size, a, t, words=None, t_reel=None, speed=7.0, hold=None):
+    """Gold fill-in-the-blank: underline + caret, or a slot reel of candidate words.
+    hold=(t_hold, index) freezes the reel on words[index] from t_hold on."""
+    if a <= 0.003:
+        return
+    w = size * 2.3
+    blend(F, np.full((2, int(w)), 255, np.uint8), x + size * 0.15, y + size * 0.18, GOLD, 0.9 * a)
+    if not words or t_reel is None or t < t_reel:
+        caret(F, x + size * 0.25, y, size, a, t)
+        return
+    pos = (t - t_reel) * speed
+    if hold is not None and t >= hold[0]:
+        pos = float(hold[1])
+    k = int(math.floor(pos))
+    fr = pos - k
+    lh = size * 1.1
+    for j in (-1, 0, 1, 2):
+        idx = (k + j) % len(words)
+        dist = abs(j - fr)
+        al = a * max(0.0, 1 - dist * 0.75) ** 1.6
+        if al <= 0.01:
+            continue
+        tw = serif(words[idx], size, 500, 0.1)
+        tw.draw(F, x + size * 0.15 + (w - tw.width) / 2, y + (j - fr) * lh, GOLD, al)
+
+
+def subtitle(F, t, t_in, t_out, zh, en, a=1.0):
+    al = a * window(t, t_in, t_out, 0.45, 0.45)
+    if al <= 0.003:
+        return
+    serif(zh, 32, 400, 0.08).draw(F, 960, 952, IVORY, 0.92 * al, align="center")
+    italic(en, 22).draw(F, 960, 990, DIM, 0.95 * al, align="center")
+
+
+def subtitles(F, t, items, a=1.0):
+    for t_in, t_out, zh, en in items:
+        subtitle(F, t, t_in, t_out, zh, en, a)
+
+
+def chapter_mark(F, a, num, zh, en):
+    if a <= 0.003:
+        return
+    T(num, "stix", 17, None, per_char=False).draw(F, 96, 92, GOLD, 0.85 * a)
+    serif(zh, 17, 500).draw(F, 96 + 34, 92, IVORY, 0.85 * a)
+    caps(en, 11, 0.36).draw(F, 96 + 62, 91, DIM, 0.9 * a)
+    hairline(F, 96, 106, 330, DIM, 0.3 * a)
+
+
+def gauge(F, cx, y, w, value, color, zh, en, value_text, a=1.0, ticks=10):
+    """Instrument: label, hairline scale, glowing dot at value (0..1)."""
+    if a <= 0.003:
+        return
+    x0, x1 = cx - w / 2, cx + w / 2
+    serif(zh, 14, 500, 0.2).draw(F, x0, y - 14, DIM, a)
+    caps(en, 10, 0.34).draw(F, x0 + 70, y - 15, DIM, 0.9 * a)
+    italic(value_text, 18).draw(F, x1, y - 12, color, a, align="right")
+    hairline(F, x0, y, x1, DIM, 0.35 * a)
+    for k in range(ticks + 1):
+        blend(F, np.full((4, 1), 255, np.uint8), x0 + w * k / ticks, y - 1, DIM, 0.35 * a)
+    xv = x0 + w * value
+    if xv > x0 + 1:
+        glow_poly(F, [(x0, y), (xv, y)], color, 0.9 * a, th=2, glow=0.7, sigma=4)
+    orb(F, xv, y, 7, color, a)

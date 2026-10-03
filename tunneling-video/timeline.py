@@ -1,16 +1,15 @@
-"""Shared timeline for picture and score.  120 BPM: one bar = 2 s, and every
-scene length is a multiple of 4 s, so cuts land on the downbeat."""
+"""Shared timeline for picture and score (global seconds)."""
 
 FPS = 30
 
 SCENES = [
-    ("opening", 12),
-    ("p1", 16),   # 经典的墙
-    ("p2", 16),   # 电子是一团波
-    ("p3", 20),   # 渗进墙里
-    ("p4", 20),   # 一纳米的差距
-    ("p5", 28),   # 它一直都在
-    ("outro", 12),
+    ("prologue", 26),   # 00 序
+    ("wall", 20),       # 01 墙
+    ("wave", 22),       # 02 波
+    ("through", 30),    # 03 穿
+    ("thin", 26),       # 04 薄
+    ("light", 26),      # 05 光
+    ("epilogue", 16),   # 终
 ]
 
 START = {}
@@ -20,9 +19,21 @@ for _n, _d in SCENES:
     _t += _d
 DURATION = _t
 
-WIPES = [START["p1"], START["p4"], START["p5"], START["outro"]]
-TITLE_HIT = 2.0
-RELEASE = START["p2"] + 8.0          # the wave packet is let go
-TUNNEL_HIT = START["p3"] + 2.0       # transmitted packet emerges
-TILE_HITS = [START["p5"] + d for d in (4.0, 8.0, 12.0, 16.0)]
-STRIKE_HIT = START["outro"] + 4.0
+# sync points for the score
+BALL_HIT = 2.6
+REEL = (10.2, 18.6)
+ELECTRON_HITS = (11.6, 15.6)
+BURST = 20.0
+TITLE = 20.6
+CHAPTERS = [START[n] for n in ("wall", "wave", "through", "thin", "light", "epilogue")]
+IMPOSSIBLE = START["wall"] + 16.8
+DETECT = (START["wave"] + 10.0, START["wave"] + 16.0)
+COLLIDE = START["through"] + 10.2
+EMERGE = START["through"] + 13.8
+REVEAL = START["through"] + 22.4
+STEPS = [START["thin"] + s for s in (3.0, 7.5, 11.0, 14.5)]
+FORMULA = START["thin"] + 18.0
+VIGNETTES = [START["light"] + s for s in (0.0, 9.0, 17.0)]
+SPARKS = (START["light"] + 23.5, START["epilogue"] + 5.0)
+MORPH = (START["epilogue"] + 7.5, START["epilogue"] + 10.0)
+FINAL = START["epilogue"] + 13.0

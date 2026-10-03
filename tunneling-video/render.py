@@ -13,8 +13,8 @@ from pathlib import Path
 import cv2
 
 import scenes as S
-from style import ROOT, H, W, crop_marks, finalize, header_footer, make_grain, make_paper, window, wipe
-from timeline import DURATION, FPS, SCENES, START, WIPES
+from style import ROOT, H, W, finalize, make_background, make_grain, twinkle
+from timeline import DURATION, FPS, SCENES, START
 
 BUILD = ROOT / "build"
 _state = {}
@@ -22,10 +22,10 @@ _state = {}
 
 def _init():
     if not _state:
-        paper, vig = make_paper()
-        _state.update(paper=paper, vig=vig, grain=make_grain())
+        bg, vig, tw = make_background()
+        _state.update(bg=bg, vig=vig, tw=tw, grain=make_grain())
         import physics
-        physics.packet()
+        physics.packet2d()
 
 
 def frame(fi):
@@ -36,13 +36,10 @@ def frame(fi):
         if START[n] <= g < START[n] + d:
             name, dur = n, d
             break
-    t = g - START[name]
-    F = _state["paper"].copy()
-    S.SCENE_FUNCS[name](F, t, g, fi)
-    crop_marks(F, 1.0)
-    header_footer(F, g, window(g, START["p1"], START["outro"], 0.01, 0.01), S.PART_NUM.get(name, 0), DURATION)
-    wipe(F, g, WIPES)
-    fade = min(1.0, g / 0.8) * min(1.0, (DURATION - g) / 1.2)
+    F = _state["bg"].copy()
+    twinkle(F, _state["tw"], g)
+    S.SCENE_FUNCS[name](F, g - START[name], g, fi)
+    fade = min(1.0, g / 1.0) * min(1.0, (DURATION - g) / 1.8)
     if fade < 1:
         F *= max(fade, 0.0)
     return finalize(F, _state["vig"], _state["grain"][fi % len(_state["grain"])] * fade)
@@ -63,7 +60,7 @@ def _chunk(args):
     return path
 
 
-def render_all(workers, chunks=12):
+def render_all(workers, chunks=16):
     BUILD.mkdir(exist_ok=True)
     total = DURATION * FPS
     edges = [round(total * i / chunks) for i in range(chunks + 1)]

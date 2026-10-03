@@ -6,10 +6,8 @@ mkdir -p fonts
 G=https://raw.githubusercontent.com/google/fonts/main/ofl
 get() { [ -f "fonts/$2" ] || curl -fsSL -o "fonts/$2" "$G/$1"; }
 get "notoserifsc/NotoSerifSC%5Bwght%5D.ttf"        NotoSerifSC.ttf
-get "notosanssc/NotoSansSC%5Bwght%5D.ttf"          NotoSansSC.ttf
-get "intertight/InterTight%5Bwght%5D.ttf"          InterTight.ttf
-get "ibmplexmono/IBMPlexMono-Regular.ttf"          IBMPlexMono-Regular.ttf
-get "ibmplexmono/IBMPlexMono-Medium.ttf"           IBMPlexMono-Medium.ttf
+get "cormorantgaramond/CormorantGaramond%5Bwght%5D.ttf"        CormorantGaramond.ttf
+get "cormorantgaramond/CormorantGaramond-Italic%5Bwght%5D.ttf" CormorantGaramond-Italic.ttf
 get "stixtwotext/STIXTwoText%5Bwght%5D.ttf"        STIXTwoText.ttf
 get "stixtwotext/STIXTwoText-Italic%5Bwght%5D.ttf" STIXTwoText-Italic.ttf
 get "notosansmath/NotoSansMath-Regular.ttf"        NotoSansMath.ttf
