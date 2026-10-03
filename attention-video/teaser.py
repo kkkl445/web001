@@ -1,28 +1,33 @@
-"""10-second teaser for 注意力 · Attention Is All You Need (9:16, Douyin), paper-and-ink edition.
+"""10-second teaser for 注意力 · Attention Is All You Need (9:16, Douyin).
 
 The viewer performs attention before being told what it is: in
 "小猫没有跳上桌子，因为它太累了。" everybody knows instantly who 「它」 is.
-A reader's pencil links 「它」 to every word, and one vermilion brush stroke
-lands on 小猫.  Change one word (累 -> 高) and the stroke moves to 桌子.
-That is what a Transformer computes (the percentages here are illustrative).
+Above the sentence a constellation cat acts it out - tries to jump onto a
+constellation table, falls short, lies down tired.  The fan of lines out of
+「它」 is what a Transformer computes, and whichever word wins, its drawing
+lights up.  Change one word (累 -> 高): the table grows, the cat looks up,
+and the attention moves to the table.  (Weights illustrative.)
 
   python3 teaser.py   -> attention-teaser.mp4
 """
 
+import math
 import subprocess
 from multiprocessing import Pool
 
 import numpy as np
 
-import paper as P
 import synth as A
-from style import E, H, W, ROOT, ease_in_out, ease_out, ramp, serif, smooth, statement, window
+from style import (CX, GOLD, IVORY, H, W, E, ROOT, add_sprite, caps, chapter_mark, ease_in_out, ease_out,
+                   finalize, glow_poly, make_background, make_grain, mix, orb, ramp, serif, smooth, statement,
+                   subtitles, twinkle, window, T)
 
 FPS, DUR = 30, 10.0
+STEEL = mix(np.array([0.45, 0.84, 1.0], np.float32), IVORY, 0.45)
 
 SIZE, TRACK = 84, 0.12
 L1, L2 = "小猫没有跳上桌子，", "因为它太累了。"
-Y1, Y2 = 700, 980
+Y1, Y2 = 930, 1150
 X0 = 520                                   # sentence centre (a touch left of the button column)
 TOKENS = [(0, 0, 2, "小猫"), (0, 2, 4, "没有"), (0, 4, 6, "跳上"), (0, 6, 8, "桌子"),
           (1, 0, 2, "因为"), (1, 2, 3, "它"), (1, 3, 4, "太"), (1, 4, 5, "累"), (1, 5, 6, "了")]
@@ -30,8 +35,81 @@ IT, CAT, TABLE = 5, 0, 3
 WA = np.array([0.58, 0.04, 0.05, 0.09, 0.04, 0.06, 0.04, 0.07, 0.03])   # ...因为它太累了
 WB = np.array([0.09, 0.03, 0.07, 0.56, 0.03, 0.06, 0.05, 0.08, 0.03])   # ...因为它太高了
 T1, T2 = 0.25, 1.35
-T_IT, T_FAN, T_MARK_A, T_SWAP, T_RE, T_MARK_B, T_NAME = 2.6, 3.2, 4.0, 5.0, 5.6, 6.2, 7.8
+T_HOP, T_LIE = 1.9, 2.5
+T_IT, T_FAN, T_SWAP, T_RE, T_NAME = 2.6, 3.2, 5.0, 5.6, 7.8
 
+# ------------------------------------------------- constellation drawings ---
+
+GROUND = 760
+CAT_X, CAT_S = 262, 140                    # anchor and px per unit
+#            tail tip    tail base    hip          back         neck         head back    ear          ear dip
+CAT_SIT = [(-1.0, -0.15), (-0.55, -0.12), (-0.5, -0.45), (-0.25, -0.85), (0.12, -1.05), (0.12, -1.3), (0.15, -1.62),
+           (0.28, -1.42), (0.42, -1.62), (0.5, -1.32), (0.58, -1.18), (0.38, -1.05), (0.32, -0.6), (0.32, 0.0),
+           (-0.3, 0.0), (0.4, -1.24), (0.82, -1.24), (0.8, -1.1)]
+#            ear          forehead     nose         chin         chest        front paw    back paw
+CAT_LIE = [(-1.15, -0.05), (-0.7, -0.08), (-0.6, -0.32), (-0.2, -0.45), (0.2, -0.42), (0.25, -0.62), (0.3, -0.9),
+           (0.42, -0.72), (0.55, -0.88), (0.62, -0.6), (0.72, -0.42), (0.5, -0.3), (0.35, -0.15), (0.85, 0.0),
+           (-0.35, 0.0), (0.56, -0.56), (0.96, -0.5), (0.94, -0.36)]
+CAT_EDGES = [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9), (9, 10), (10, 11), (11, 4),
+             (11, 12), (12, 13), (2, 14), (12, 2), (10, 16), (10, 17)]
+CAT_EYE = 15
+TAB_X, TAB_S = 470, 140
+TAB_EDGES = [(0, 1), (1, 2), (2, 3), (3, 0), (0, 4), (1, 5), (2, 6), (3, 7)]
+
+
+def cat_pose(t):
+    sit, lie = np.array(CAT_SIT), np.array(CAT_LIE)
+    down = ease_in_out(ramp(t, T_LIE, 0.8)) * (1 - ease_in_out(ramp(t, T_SWAP + 0.1, 0.8)))
+    p = sit + (lie - sit) * down
+    hop = math.sin(math.pi * ramp(t, T_HOP, 0.55)) if T_HOP <= t <= T_HOP + 0.55 else 0.0
+    p = p + np.array([0.25, -0.75]) * hop                         # a hop that falls short of the table
+    up = ease_in_out(ramp(t, T_SWAP + 0.5, 0.6))                  # sitting up, looking at the taller table
+    head = list(range(5, 12)) + [15, 16, 17]
+    p[head] = p[head] + np.array([0.0, -0.08]) * up
+    return np.column_stack([CAT_X + p[:, 0] * CAT_S, GROUND + p[:, 1] * CAT_S])
+
+
+def table_pts(t):
+    h = 1.5 + 1.6 * ease_in_out(ramp(t, T_SWAP, 1.0))
+    top = np.array([(0, -h), (2.6, -h), (3.0, -h - 0.35), (0.4, -h - 0.35)])
+    feet = np.array([(0, 0), (2.6, 0), (3.0, -0.35), (0.4, -0.35)])
+    p = np.vstack([top, feet])
+    return np.column_stack([TAB_X + p[:, 0] * TAB_S, GROUND + p[:, 1] * TAB_S])
+
+
+def constellation(F, pts, edges, t, t0, dur, glow, seed, eye=None):
+    """Stars joined one line at a time; glow 0..1 turns them from cool steel to gold."""
+    col = mix(STEEL, GOLD, glow)
+    a_line = 0.35 + 0.65 * glow
+    prog = ramp(t, t0, dur) * len(edges)
+    lit = set()
+    for k, (i, j) in enumerate(edges):
+        f = min(1.0, max(0.0, prog - k))
+        if f <= 0:
+            continue
+        p, q = pts[i], pts[j]
+        glow_poly(F, [p, p + (q - p) * f], col, a_line, th=1, glow=0.5 + 0.8 * glow, sigma=3 + 2 * glow)
+        lit.add(i)
+        if f >= 1:
+            lit.add(j)
+    if eye is not None and prog >= len(edges) * 0.6:
+        lit.add(eye)
+    rng = np.random.default_rng(seed)
+    ph = rng.uniform(0, 6.28, len(pts))
+    for i in lit:
+        tw_ = 0.8 + 0.2 * math.sin(t * 2.3 + ph[i])
+        orb(F, pts[i][0], pts[i][1], 3.5 + 2.5 * glow, col, (0.55 + 0.45 * glow) * tw_)
+
+
+def ground(F, t):
+    a = 0.22 * smooth(ramp(t, 0.2, 1.0))
+    if a > 0:
+        xs = np.linspace(150, 900, 32)
+        for x in xs:
+            orb(F, x, GROUND + 4, 1.2, STEEL, a)
+
+
+# ------------------------------------------------------------- sentence ---
 
 def layout():
     out = []
@@ -42,30 +120,30 @@ def layout():
     tok = []
     for line, a, b, _ in TOKENS:
         boxes, y = out[line]
-        tok.append(((boxes[a][0] + boxes[b - 1][1]) / 2, y, line, boxes[b - 1][1] - boxes[a][0]))
+        tok.append(((boxes[a][0] + boxes[b - 1][1]) / 2, y, line))
     return tok
 
 
 TOK = layout()
 
 
-def bezier(p0, p1, p2, n=60):
+def bezier(p0, p1, p2, n=48):
     u = np.linspace(0, 1, n)[:, None]
     return (1 - u) ** 2 * p0 + 2 * (1 - u) * u * p1 + u ** 2 * p2
 
 
 def arc(i):
-    """From 「它」 to token i: up across the gap for line 1, a loop under line 2 for its neighbours."""
-    sx, sy, _, _ = TOK[IT]
-    tx, ty, line, _ = TOK[i]
+    """Curve from 「它」 to token i: up into the gap for line 1, a loop under line 2 for its neighbours."""
+    sx, sy, _ = TOK[IT]
+    tx, ty, line = TOK[i]
     if line == 0:
-        p0 = np.array([sx, sy - SIZE * 0.98])
-        p2 = np.array([tx, ty + SIZE * 0.26])
+        p0 = np.array([sx, sy - SIZE * 0.92])
+        p2 = np.array([tx, ty + SIZE * 0.22])
         p1 = np.array([(sx + tx) / 2, (p0[1] + p2[1]) / 2 + 40])
     else:
-        p0 = np.array([sx, sy + SIZE * 0.3])
-        p2 = np.array([tx, ty + SIZE * 0.3])
-        p1 = np.array([(sx + tx) / 2, sy + SIZE * 0.3 + 70 + 0.35 * abs(tx - sx)])
+        p0 = np.array([sx, sy + SIZE * 0.24])
+        p2 = np.array([tx, ty + SIZE * 0.24])
+        p1 = np.array([(sx + tx) / 2, sy + SIZE * 0.24 + 34 + 0.16 * abs(tx - sx)])
     return bezier(p0, p1, p2)
 
 
@@ -78,29 +156,8 @@ def weights(t):
     return w + (WB - w) * ease_in_out(ramp(t, T_RE, 1.0))
 
 
-def ring_around(i, seed):
-    tx, ty, _, wd = TOK[i]
-    return P.ring(tx, ty - SIZE * 0.36, wd / 2 + SIZE * 0.1, SIZE * 0.66, seed=seed)
-
-
-RING_IT = ring_around(IT, 1)
-RING_CAT = ring_around(CAT, 2)
-RING_TABLE = ring_around(TABLE, 3)
-
-
-def mark(F, t, i, t0, ring_pts, pct, t_off=None):
-    """Brush stroke from 「它」 to the answer, a loop round it, and a margin note."""
-    a = 1.0 if t_off is None else 1 - smooth(ramp(t, t_off, 0.5))
-    if t < t0 or a <= 0.003:
-        return
-    P.brush(F, ARCS[i], 9, a=a, upto=ease_in_out(ramp(t, t0, 0.5)), seed=i)
-    P.brush(F, ring_pts, 6, a=a, upto=ease_out(ramp(t, t0 + 0.4, 0.45)), seed=i + 10)
-    tx, ty, _, wd = TOK[i]
-    P.note(F, pct, tx + wd / 2 + 36, ty - SIZE - 6, a * smooth(ramp(t, t0 + 0.7, 0.4)))
-
-
 def line2(F, t):
-    """Second line, typed in ink, with one character that changes its mind."""
+    """Second line, typed like statement(), with one character that can change its mind."""
     a_txt = serif(L2, SIZE, 400, TRACK)
     b_txt = serif(L2.replace("累", "高"), SIZE, 400, TRACK)
     x0 = X0 - a_txt.width / 2
@@ -109,39 +166,79 @@ def line2(F, t):
         u = ease_out(ramp(t, T2 + i / 7.5, 0.25))
         if u <= 0:
             continue
+        col = GOLD if (i == 2 and t >= T_IT) else IVORY
         off = (1 - u) * 6
         if i == 4 and sw > 0:
-            E.blend(F, m, x0 + dx, Y2 + dy + off - 16 * sw, P.INK, u * (1 - sw))
+            E.blend(F, m, x0 + dx, Y2 + dy + off - 18 * sw, IVORY, u * (1 - sw))
             mb, dxb, dyb = b_txt.items[i]
-            E.blend(F, mb, x0 + dxb, Y2 + dyb + 12 * (1 - sw), P.INK, sw)
+            E.blend(F, mb, x0 + dxb, Y2 + dyb + 14 * (1 - sw), mix(GOLD, IVORY, sw ** 2), sw)
         else:
-            E.blend(F, m, x0 + dx, Y2 + dy + off, P.INK, u)
+            E.blend(F, m, x0 + dx, Y2 + dy + off, col, u)
 
 
-def frame(fi, paper, grain):
+def link(F, a, b, alpha, col):
+    """Dotted thread from a word up to the thing it names in the picture."""
+    if alpha <= 0.01:
+        return
+    n = int(np.hypot(*(b - a)) / 14)
+    for k in range(1, n):
+        p = a + (b - a) * k / n
+        add_sprite(F, p[0], p[1], 1.6, col, 0.55 * alpha)
+
+
+def frame(fi, bg, vig, tw, grain):
     t = fi / FPS
-    F = paper.copy()
-    P.chapter_mark(F, window(t, 0.3, 10, 1.0, 0.6), "00", "序", "PROLOGUE")
+    F = bg.copy()
+    twinkle(F, tw, t)
+    chapter_mark(F, window(t, 0.3, 10, 1.0, 0.6), "00", "序", "PROLOGUE")
     w = weights(t)
-    grow = ease_out(ramp(t, T_FAN, 0.8))
-    if grow > 0:                                     # a reader's pencil, from 「它」 to every word
+    hl = smooth(ramp(t, T_FAN + 0.8, 0.5))
+    rel = w / w.max()
+    # the picture: a constellation table, and a cat that is either too tired or the table too tall
+    ground(F, t)
+    tab = table_pts(t)
+    cat = cat_pose(t)
+    constellation(F, tab, TAB_EDGES, t, 0.35, 1.1, hl * smooth((rel[TABLE] - 0.3) / 0.7), seed=2)
+    constellation(F, cat, CAT_EDGES, t, 0.6, 1.3, hl * smooth((rel[CAT] - 0.3) / 0.7), seed=1, eye=CAT_EYE)
+    for i, target in ((CAT, cat[12]), (TABLE, (tab[0] + tab[1]) / 2)):
+        tx, ty, _ = TOK[i]
+        link(F, np.array([tx, ty - SIZE - 66]), np.array(target) + np.array([0, 18]),
+             hl * smooth((rel[i] - 0.5) / 0.5), GOLD)
+    # the fan of attention out of 「它」
+    grow = ease_out(ramp(t, T_FAN, 0.9))
+    if grow > 0:
+        top = int(np.argmax(w))
         for i, pts in enumerate(ARCS):
-            if i != IT:
-                P.pencil(F, pts, 0.45 + 0.55 * w[i] / w.max(), upto=grow)
-    statement(F, L1, X0, Y1, t, T1, None, size=SIZE, tracking=TRACK, cps=7.5, fade_in=0.25, color=P.INK)
+            if i == IT:
+                continue
+            k = max(2, int(len(pts) * grow))
+            col = mix(STEEL, GOLD, smooth(rel[i]))
+            glow_poly(F, pts[:k], col, (0.26 + 0.74 * rel[i] ** 1.2) * grow,
+                      th=1 if rel[i] < 0.4 else 2 if rel[i] < 0.8 else 3, glow=0.4 + 1.2 * rel[i],
+                      sigma=4 + 4 * rel[i])
+            if k < len(pts):
+                orb(F, pts[k - 1][0], pts[k - 1][1], 4, col, 0.8 * grow)
+        tx, ty, _ = TOK[top]
+        add_sprite(F, tx, ty - SIZE * 0.35, 70, GOLD, 0.2 * hl)
+        T(f"{round(100 * w[top])}%", "stix", 36, None, per_char=False).draw(
+            F, tx, ty - SIZE - 16, GOLD, hl, align="center")
+    statement(F, L1, X0, Y1, t, T1, None, size=SIZE, tracking=TRACK, cps=7.5, fade_in=0.25)
     line2(F, t)
-    P.brush(F, RING_IT, 6, upto=ease_out(ramp(t, T_IT, 0.45)), seed=7)
-    mark(F, t, CAT, T_MARK_A, RING_CAT, "58%", t_off=T_SWAP)
-    mark(F, t, TABLE, T_MARK_B, RING_TABLE, "56%")
-    P.seal(F, 846, 1040, "注意力", 40, smooth(ramp(t, T_NAME + 0.2, 0.15)))
-    P.subtitles(F, t, [(T_IT, T_SWAP - 0.2, "「它」指的是谁？你一眼就知道。", "Who is 'it'? You know at a glance."),
-                       (T_SWAP, T_NAME - 0.2, "换一个字，「它」就换了对象。", "Change one word, and 'it' points elsewhere."),
-                       (T_NAME, 10.4, "你刚才做的这件事，就叫「注意力」。", "What you just did is called attention.")])
-    fade = min(1.0, (DUR - t) / 0.7)
-    if fade < 1:                                     # the marks dissolve back into blank paper
-        F[:] = paper + (F - paper) * max(fade, 0.0)
-    F *= 0.2 + 0.8 * smooth(min(1.0, t / 0.6))      # open from dark onto the page
-    return P.finalize(F, grain[fi % len(grain)])
+    if t >= T_IT:                                    # 「它」 glow pulse
+        sx, sy, _ = TOK[IT]
+        p = math.exp(-(t - T_IT) * 2.2)
+        add_sprite(F, sx, sy - SIZE * 0.35, 46 + 30 * p, GOLD, 0.25 + 0.5 * p)
+    if T_SWAP <= t < T_SWAP + 0.9:                   # the swapped word flashes
+        sx, sy, _ = TOK[7]
+        q = (t - T_SWAP) / 0.9
+        add_sprite(F, sx, sy - SIZE * 0.35, 40 + 60 * q, GOLD, 0.7 * math.sin(math.pi * q))
+    subtitles(F, t, [(T_IT, T_SWAP - 0.2, "「它」指的是谁？你一眼就知道。", "Who is 'it'? You know at a glance."),
+                     (T_SWAP, T_NAME - 0.2, "换一个字，「它」就换了对象。", "Change one word, and 'it' points elsewhere."),
+                     (T_NAME, 10.4, "你刚才做的这件事，就叫「注意力」。", "What you just did is called attention.")])
+    caps("ATTENTION", 26, 0.9).draw(F, CX, 1296, GOLD, 0.9 * smooth(ramp(t, T_NAME + 0.3, 0.8)), align="center")
+    fade = min(1.0, t / 0.5) * min(1.0, (DUR - t) / 0.7)
+    F *= max(fade, 0.0)
+    return finalize(F, vig, grain[fi % len(grain)] * fade)
 
 
 _state = {}
@@ -149,50 +246,50 @@ _state = {}
 
 def _render(fi):
     if not _state:
-        _state.update(paper=P.make_paper(), grain=P.make_grain())
-    return frame(fi, _state["paper"], _state["grain"]).tobytes()
+        bg, vig, tw = make_background()
+        _state.update(bg=bg, vig=vig, tw=tw, grain=make_grain())
+    s = _state
+    return frame(fi, s["bg"], s["vig"], s["tw"], s["grain"]).tobytes()
 
 
 def score(path):
     n = int(DUR * A.SR)
-    pad, pno, plk, fx = (A.stereo(n) for _ in range(4))
-    for t0, hold, notes in ((0.0, 5.3, [50, 57, 62, 64, 69]), (5.0, 3.1, [47, 54, 57, 62, 64]),
-                            (T_NAME, 2.4, [43, 50, 54, 57, 62])):
+    pad, pno, bel, fx, tick = (A.stereo(n) for _ in range(5))
+    for t0, hold, notes in ((0.0, 5.2, [53, 57, 60, 64, 67]), (5.0, 3.0, [50, 57, 60, 64, 65]),
+                            (T_NAME, 2.4, [46, 53, 57, 60, 62])):
         for m in notes:
-            A.place(pad, A.pad_note(m, hold, attack=1.4, release=2.0), t0)
-
-    def pl(m, t, vel=0.5, pan=0.0):
-        A.place(plk, A.pluck(m, vel), t, pan=pan)
-
-    pl(69, 0.30, 0.35, -0.2)
-    pl(74, 1.40, 0.35, 0.2)
-    A.place(fx, A.brush_swish(0.45, 0.35), T_IT, pan=-0.1)
-    pl(76, T_IT + 0.05, 0.45)
-    for k in range(len(TOKENS) - 1):
-        A.place(fx, A.pencil_scratch(0.12, 0.08), T_FAN + 0.06 * k, pan=-0.5 + 0.12 * k)
-    for k, m in enumerate((62, 66, 69)):
-        pl(m, T_FAN + 0.18 * k, 0.3, -0.3 + 0.3 * k)
-    A.place(fx, A.brush_swish(0.5, 0.45), T_MARK_A, pan=-0.3)
-    pl(81, T_MARK_A + 0.45, 0.5, -0.2)
-    A.place(pno, A.piano(50, 0.4), T_MARK_A + 0.45)
-    A.place(fx, A.brush_swish(0.4, 0.3), T_MARK_A + 0.4, pan=-0.4)
-    for k, m in enumerate((78, 76, 74)):
-        pl(m, T_SWAP + 0.15 * k, 0.32, 0.2)
-    A.place(fx, A.brush_swish(0.5, 0.45), T_MARK_B, pan=0.3)
-    pl(78, T_MARK_B + 0.45, 0.5, 0.3)
-    A.place(pno, A.piano(47, 0.4), T_MARK_B + 0.45)
-    A.place(fx, A.brush_swish(0.4, 0.3), T_MARK_B + 0.4, pan=0.4)
-    A.place(fx, A.stamp(0.8), T_NAME + 0.2)
-    for k, m in enumerate((43, 55, 62, 67, 71, 74)):
-        pl(m, T_NAME + 0.3 + 0.09 * k, 0.42, -0.4 + 0.16 * k)
-    A.place(pno, A.piano(43, 0.38), T_NAME + 0.3)
+            A.place(pad, A.pad_note(m, hold, attack=1.2, release=2.0), t0)
+    for t0, dur, ne in ((0.35, 1.1, len(TAB_EDGES)), (0.6, 1.3, len(CAT_EDGES))):
+        for k in range(ne):                          # each star joining the drawing
+            A.place(tick, A.blip(int(A.rng.choice([88, 91, 93, 96])), 0.18), t0 + dur * k / ne,
+                    pan=A.rng.uniform(-0.6, 0.2))
+    A.place(fx, A.thud(0.35), T_HOP + 0.5)
+    A.place(pno, A.piano(65, 0.28), T_LIE + 0.1)
+    A.place(pno, A.piano(60, 0.24), T_LIE + 0.5)
+    A.place(bel, A.bell(81, 0.5), T_IT, pan=0.1)
+    for k, m in enumerate((69, 72, 76, 79, 81, 84, 88)):
+        A.place(bel, A.bell(m, 0.22, ratio=2.0, dur=3.0), T_FAN + 0.11 * k, pan=-0.6 + 0.2 * k)
+    A.place(pno, A.piano(41, 0.4), T_FAN + 0.9)
+    A.place(pno, A.piano(65, 0.35), T_FAN + 0.95)
+    A.place(fx, A.riser(0.6, 0.35), T_SWAP - 0.55)
+    A.place(fx, A.riser(1.0, 0.25), T_SWAP)
+    A.place(bel, A.bell(76, 0.45, ratio=2.0), T_SWAP + 0.05, pan=-0.2)
+    for k, m in enumerate((86, 84, 81, 79, 76)):
+        A.place(bel, A.bell(m, 0.18, ratio=2.0, dur=2.5), T_RE + 0.12 * k, pan=0.5 - 0.2 * k)
+    A.place(pno, A.piano(38, 0.4), T_RE + 1.0)
+    A.place(pno, A.piano(62, 0.32), T_RE + 1.05)
+    A.place(fx, A.boom(0.6), T_NAME)
+    for k, m in enumerate((46, 58, 62, 65, 69, 74)):
+        A.place(pno, A.piano(m, 0.38), T_NAME + 0.08 * k)
+    A.place(bel, A.bell(86, 0.4), T_NAME + 0.6, pan=0.3)
     ir = A.build_ir(3.5)
-    pad = A.hp(A.lp(pad / (np.abs(pad).max() + 1e-9) * 0.28, 1800), 90)
-    pno = pno / (np.abs(pno).max() + 1e-9) * 0.45
-    plk = plk / (np.abs(plk).max() + 1e-9) * 0.55
-    fx = fx / (np.abs(fx).max() + 1e-9) * 0.4
-    dry = pad + pno + plk + fx
-    mix_ = A.hp(dry + A.reverb(pad * 0.3 + pno * 0.5 + plk * 0.6 + fx * 0.2, ir) * 0.45, 28)
+    pad = A.hp(A.lp(pad / (np.abs(pad).max() + 1e-9) * 0.35, 3000), 90)
+    pno = pno / (np.abs(pno).max() + 1e-9) * 0.5
+    bel = bel / (np.abs(bel).max() + 1e-9) * 0.4
+    fx = fx / (np.abs(fx).max() + 1e-9) * 0.45
+    tick = tick / (np.abs(tick).max() + 1e-9) * 0.12
+    dry = pad + pno + bel + fx + tick
+    mix_ = A.hp(dry + A.reverb(pad * 0.3 + pno * 0.5 + bel * 0.8 + tick * 0.6, ir) * 0.5, 28)
     env = np.ones(n)
     fi_, fo = int(0.3 * A.SR), int(0.9 * A.SR)
     env[:fi_] = A.rc(fi_)
