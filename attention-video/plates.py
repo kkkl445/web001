@@ -644,3 +644,250 @@ def layer(F, cx, y, w, a=1.0, detail=1.0, glow=0.0, h=170):
         _rrect(F, bx0, yb - hb, bx1, yb, c, 0.6 * d, r=5, glow=0.2, fill=0.06)
         T(name, "stix", 15 if hb < 20 else 21, None, per_char=False).draw(F, cx, yb - hb / 2 + (5 if hb < 20 else 7),
                                                                          IVORY, 0.85 * d, align="center")
+
+
+# ================================================================ v3 ===
+# Pictures that carry the explanation: the next-word game, the sky of
+# meaning, the dot product on a small chart, softmax as bars, the formula
+# taken apart.
+
+def bars(F, items, x0, y0, w, a=1.0, grow=1.0, row=74, size=40, hot=0, note=None):
+    """Horizontal probability bars: label, bar, percentage.  items: [(label, p)]."""
+    if a <= 0.003:
+        return
+    pmax = max(p for _, p in items)
+    for i, (lab, p) in enumerate(items):
+        y = y0 + row * i
+        g = smooth(ramp(grow, 0.08 * i, 0.5))
+        col = GOLD if i == hot else mix(STEEL, IVORY, 0.35)
+        serif(lab, size, 500, 0.0).draw(F, x0, y + size * 0.36, col if i == hot else IVORY, a, align="right")
+        bw = (w * p / pmax) * g
+        if bw > 1:
+            E.add_light(F, np.full((int(size * 0.55), int(bw)), 1.0, np.float32), x0 + 24, y - size * 0.28, col,
+                        (0.55 if i == hot else 0.32) * a)
+            if i == hot:
+                add_sprite(F, x0 + 24 + bw, y, 18, GOLD, 0.3 * a * g)
+        T(f"{round(100 * p)}%", "stix", int(size * 0.8), None, per_char=False).draw(
+            F, x0 + 40 + bw, y + size * 0.3, col if i == hot else DIM, a * g)
+    if note:
+        serif(note, 24, 400, 0.1).draw(F, x0 + 24 + w, y0 + row * len(items), DIM, 0.8 * a, align="right")
+
+
+def guess_line(F, text, x, y, size, a=1.0, typed=None, blank=True, t=0.0, fill=None, fill_a=0.0):
+    """A sentence typed out, ending in a blank box with a blinking cursor (or the guessed character)."""
+    tx = serif(text, size, 400, 0.12)
+    n = len(tx.items)
+    x0 = x - (tx.width + size * 1.1) / 2
+    for i, (m, dx, dy) in enumerate(tx.items):
+        al = a * (1.0 if typed is None else typed(i))
+        if al > 0.003:
+            blend(F, m, x0 + dx, y + dy, IVORY, al)
+    if blank:
+        bx = x0 + tx.width + size * 0.12
+        on = 1.0 if typed is None else typed(n)
+        if on > 0:
+            _rrect(F, bx, y - size * 0.92, bx + size * 0.98, y + size * 0.16, GOLD, 0.7 * a * on, r=6, glow=0.4)
+            if fill and fill_a > 0:
+                serif(fill, size, 500, 0).draw(F, bx + size * 0.49, y, GOLD, a * fill_a, align="center")
+            elif (t * 1.6) % 1 < 0.6:
+                hairline(F, bx + size * 0.3, int(y + size * 0.02), bx + size * 0.7, GOLD, 0.9 * a * on, th=3)
+    return x0
+
+
+# ------------------------------------------------------- the sky of meaning ---
+
+SKY_WORDS = {
+    # animals
+    "小猫": (230, 560), "狗": (330, 480), "老虎": (170, 450), "兔子": (150, 640),
+    # furniture
+    "桌子": (790, 560), "椅子": (890, 490), "床": (860, 660),
+    # how one feels
+    "累": (290, 1040), "困": (390, 1110), "饿": (190, 1150),
+    # fruit
+    "香蕉": (760, 1150), "橙子": (880, 1090),
+    # phones and companies
+    "手机": (730, 860), "公司": (870, 910),
+    # people
+    "男人": (360, 400), "女人": (580, 350), "国王": (390, 300), "女王": (610, 250),
+}
+SKY_GROUPS = [["小猫", "狗", "老虎", "兔子"], ["桌子", "椅子", "床"], ["累", "困", "饿"], ["香蕉", "橙子"],
+              ["手机", "公司"]]
+IT_HOME = np.array([520, 780])
+
+
+def sky_word(F, name, p, a=1.0, glow=0.0, size=34, mag=1.0, label=True, col=None):
+    if a <= 0.003:
+        return
+    c = col if col is not None else mix(mix(STEEL, IVORY, 0.55), GOLD, glow)
+    orb(F, p[0], p[1], (3.0 + 2.0 * mag) * (1 + 0.6 * glow), c, (0.7 + 0.3 * glow) * a)
+    if label:
+        serif(name, size, 500, 0.05).draw(F, p[0] + 16, p[1] + size * 0.36, mix(IVORY, GOLD, glow), 0.85 * a)
+
+
+def sky(F, a=1.0, groups=1.0, words=None, dim=None, glow=None, nebula=1.0):
+    """The sky of meaning: words as stars, neighbours in meaning close together, each family faintly joined."""
+    if a <= 0.003:
+        return
+    dim = dim or {}
+    glow = glow or {}
+    for gk, grp in enumerate(SKY_GROUPS):
+        ga = a * smooth(ramp(groups, 0.12 * gk, 0.5))
+        if ga <= 0.003:
+            continue
+        pts = np.array([SKY_WORDS[w] for w in grp], float)
+        c = pts.mean(0)
+        da = min(dim.get(w, 1.0) for w in grp)
+        add_sprite(F, c[0], c[1], 110, mix(STEEL, GOLD, 0.3), 0.05 * ga * nebula * da)
+        for i in range(len(pts) - 1):
+            glow_poly(F, [pts[i], pts[i + 1]], mix(STEEL, IVORY, 0.4), 0.22 * ga * da, th=1, glow=0.3, sigma=2)
+    for w, p in SKY_WORDS.items():
+        if words is not None and w not in words:
+            continue
+        gk = next((k for k, grp in enumerate(SKY_GROUPS) if w in grp), 0)
+        ga = a * smooth(ramp(groups, 0.12 * gk, 0.5)) if words is None else a
+        sky_word(F, w, SKY_WORDS[w], ga * dim.get(w, 1.0), glow=glow.get(w, 0.0))
+
+
+def arrow(F, p, q, col, a=1.0, th=2, head=16, glow=0.6):
+    p, q = np.asarray(p, float), np.asarray(q, float)
+    d = q - p
+    L = np.linalg.norm(d)
+    if L < 2 or a <= 0.003:
+        return
+    u = d / L
+    n = np.array([-u[1], u[0]])
+    glow_poly(F, [p, q - u * head * 0.6], col, a, th=th, glow=glow, sigma=3)
+    tip = [q, q - u * head + n * head * 0.42, q - u * head * 0.72, q - u * head - n * head * 0.42]
+    st = E.Stroke(min(t[0] for t in tip) - 3, min(t[1] for t in tip) - 3, max(t[0] for t in tip) + 4,
+                  max(t[1] for t in tip) + 4)
+    st.fill(tip)
+    st.light(F, col, a)
+
+
+# ---------------------------------------------------- the dot product chart ---
+
+DOT_O = np.array([240, 1000])         # origin of the little chart
+DOT_S = 210                           # pixels per unit
+Q_VEC = np.array([2.0, 0.0])
+K_VECS = [("小猫", np.array([1.5, 0.5])), ("累", np.array([1.0, 0.3])), ("跳上", np.array([0.5, 1.0])),
+          ("桌子", np.array([0.0, 2.0]))]
+
+
+def dot_pt(v):
+    return DOT_O + np.array([v[0], -v[1]]) * DOT_S
+
+
+def dot_chart(F, a=1.0, q=1.0, keys=None, focus=None, axes=1.0):
+    """Two little axes ('会累的' across, '是个物件' up), the question as a gold arrow, the labels as arrows."""
+    if a <= 0.003:
+        return
+    keys = keys if keys is not None else [1.0] * len(K_VECS)
+    aa = a * axes
+    x1 = DOT_O[0] + 2.4 * DOT_S
+    y1 = DOT_O[1] - 2.3 * DOT_S
+    st = E.Stroke(DOT_O[0] - 4, y1 - 4, x1 + 4, DOT_O[1] + 4)
+    st.line(DOT_O, (x1, DOT_O[1]))
+    st.line(DOT_O, (DOT_O[0], y1))
+    for k in range(1, 3):
+        st.line((DOT_O[0] + k * DOT_S, DOT_O[1] - 6), (DOT_O[0] + k * DOT_S, DOT_O[1] + 6))
+        st.line((DOT_O[0] - 6, DOT_O[1] - k * DOT_S), (DOT_O[0] + 6, DOT_O[1] - k * DOT_S))
+    st.light(F, mix(STEEL, IVORY, 0.4), 0.45 * aa)
+    serif("会累的", 28, 500, 0.08).draw(F, x1 + 12, DOT_O[1] + 10, DIM, aa)
+    serif("是个物件", 28, 500, 0.08).draw(F, DOT_O[0], y1 - 22, DIM, aa, align="center")
+    for k in range(1, 3):
+        T(str(k), "stix", 22, None, per_char=False).draw(F, DOT_O[0] + k * DOT_S, DOT_O[1] + 34, DIM, aa,
+                                                         align="center")
+        T(str(k), "stix", 22, None, per_char=False).draw(F, DOT_O[0] - 22, DOT_O[1] - k * DOT_S + 8, DIM, aa,
+                                                         align="right")
+    for i, (name, v) in enumerate(K_VECS):
+        ka = a * keys[i] * (1.0 if focus is None or focus == i else 0.3)
+        if ka <= 0.003:
+            continue
+        tip = dot_pt(v)
+        arrow(F, DOT_O, tip, mix(STEEL, IVORY, 0.3), ka, th=2)
+        serif(f"{name}", 32, 500, 0.05).draw(F, tip[0] + 16, tip[1] - 8, IVORY, ka)
+        T(f"K = ({v[0]:g}, {v[1]:g})", "stix_it", 26, None, per_char=False).draw(F, tip[0] + 16, tip[1] + 26, DIM, ka)
+    if q > 0:
+        tip = dot_pt(Q_VEC)
+        arrow(F, DOT_O, DOT_O + (tip - DOT_O) * smooth(q), GOLD, a * smooth(q), th=3, head=20, glow=1.0)
+        T("Q = (2, 0)", "stix_it", 32, None, per_char=False).draw(F, tip[0] + 40, tip[1] + 64, GOLD, a * smooth(q),
+                                                                  align="center")
+        serif("「它」的问题：前面哪个东西会累？", 30, 500, 0.08).draw(F, CX, DOT_O[1] + 110, GOLD, a * smooth(q),
+                                                         align="center")
+
+
+def dot_sum(F, y, a=1.0, which=0, reveal=1.0):
+    """'2 × 1.5 + 0 × 0.5 = 3' written out term by term."""
+    name, v = K_VECS[which]
+    parts = [("Q · K", "stix_it", GOLD), ("  =  ", "stix", IVORY), ("2", "stix", GOLD), (" × ", "stix", IVORY),
+             (f"{v[0]:g}", "stix", IVORY), ("  +  ", "stix", IVORY), ("0", "stix", GOLD), (" × ", "stix", IVORY),
+             (f"{v[1]:g}", "stix", IVORY), ("  =  ", "stix", IVORY), (f"{Q_VEC @ v:g}", "stix", GOLD)]
+    sz = 46
+    ws = [T(p, f, sz, None, per_char=False).width for p, f, _ in parts]
+    x = CX - sum(ws) / 2
+    for k, ((p, f, c), w) in enumerate(zip(parts, ws)):
+        al = a * smooth(ramp(reveal, k / len(parts), 1.5 / len(parts)))
+        T(p, f, sz, None, per_char=False).draw(F, x, y, c, al)
+        x += w
+    serif(f"「它」的问题 · 「{name}」的标签", 28, 500, 0.08).draw(F, CX, y + 54, DIM, a, align="center")
+
+
+SOFT_ITEMS = [("小猫", 0.571), ("累", 0.210), ("跳上", 0.077), ("桌子", 0.028), ("其余 4 个", 0.114)]
+SCORES = [("小猫", 3), ("累", 2), ("跳上", 1), ("桌子", 0), ("其余 4 个", 0)]
+
+
+def formula_parts(F, cx, y, a=1.0, lit=None, notes=1.0):
+    """softmax(QKᵀ/√dₖ)V with each part lit in turn and its meaning written under it."""
+    lit = lit or {}
+    sz = 66
+    pieces = [("Attention(", "stix", None), ("Q", "stix_it", None), (", ", "stix", None), ("K", "stix_it", None),
+              (", ", "stix", None), ("V", "stix_it", None), (")", "stix", None)]
+    w1 = sum(T(p, f, sz, None, per_char=False).width for p, f, _ in pieces)
+    x = cx - w1 / 2
+    for p, f, _ in pieces:
+        tx = T(p, f, sz, None, per_char=False)
+        tx.draw(F, x, y, IVORY, a)
+        x += tx.width
+    y2 = y + 120
+    segs = [("=  softmax(", "stix", "soft"), ("QK", "stix_it", "qk"), ("T", "stix_sup", "qk"), (" / ", "stix", "sq"),
+            ("√", "math", "sq"), ("d", "stix_it", "sq"), ("k", "stix_sub", "sq"), (")", "stix", "soft"),
+            (" V", "stix_it", "v")]
+
+    def mk(p, f):
+        if f == "stix_sup":
+            return T(p, "stix", 40, None, per_char=False), -30
+        if f == "stix_sub":
+            return T(p, "stix_it", 40, None, per_char=False), 14
+        return T(p, f, sz, None, per_char=False), 0
+
+    tot = sum(mk(p, f)[0].width for p, f, _ in segs)
+    x = cx - tot / 2
+    spans = {}
+    for p, f, key in segs:
+        tx, dy = mk(p, f)
+        on = lit.get(key, 0.0)
+        tx.draw(F, x, y2 + dy, mix(IVORY, GOLD, on), a)
+        if key == "sq" and p == "d":
+            hairline(F, x - 2, int(y2 - 60), x + tx.width + 26, mix(IVORY, GOLD, on), a, th=2)
+        s0, s1 = spans.get(key, (1e9, -1e9))
+        spans[key] = (min(s0, x), max(s1, x + tx.width))
+        x += tx.width
+    labels = {"soft": "变成百分比", "qk": "比一比", "sq": "别太大", "v": "按比例取内容"}
+    order_ = ["soft", "qk", "sq", "v"]
+    for r, key in enumerate(order_):
+        on = lit.get(key, 0.0) * notes
+        if on <= 0.003:
+            continue
+        s0, s1 = spans[key]
+        if key == "soft":
+            s0 = spans["soft"][0] + T("=  ", "stix", sz, None, per_char=False).width
+            s1 = spans["soft"][0] + T("=  softmax", "stix", sz, None, per_char=False).width
+        xm = (s0 + s1) / 2
+        yy = y2 + 92 + 66 * r
+        hairline(F, s0 + 4, int(y2 + 24), s1 - 4, GOLD, 0.8 * a * on, th=2)
+        glow_poly(F, [(xm, y2 + 28), (xm, yy - 34)], GOLD, 0.45 * a * on, th=1, glow=0.3, sigma=2)
+        lab = serif(labels[key], 32, 500, 0.08)
+        xl = min(max(xm, 80 + lab.width / 2), 950 - lab.width / 2)      # keep clear of the screen's edges
+        if abs(xl - xm) > 2:
+            glow_poly(F, [(xm, yy - 34), (xl, yy - 34)], GOLD, 0.45 * a * on, th=1, glow=0.3, sigma=2)
+        lab.draw(F, xl, yy, GOLD, a * on, align="center")
