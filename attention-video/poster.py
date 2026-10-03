@@ -52,9 +52,37 @@ def finish(F, path):
     print("wrote", path, out.shape[1], "x", out.shape[0])
 
 
-def headline(F, y, size=110):
-    """「它」指的是谁？ - a question, readable as a thumbnail, with no formula and no big claims."""
-    ST.punch(F, "「它」指的是谁？", W / 2, y, 10.0, 0.0, size=size, wght=900, gold=(1,))
+INK = np.array([0.035, 0.045, 0.075], np.float32)
+
+
+def badge(F, text, cx, y, size=88, pad_x=46, pad_y=26):
+    """Dark text on a solid gold pill - the line that has to be read first."""
+    tx = zh(text, size, 900, 0.04)
+    w = int(tx.width + 2 * pad_x)
+    h = int(size * 1.05 + 2 * pad_y)
+    r = h // 2
+    ss = 4
+    m = np.zeros((h * ss, w * ss), np.uint8)
+    cv2.rectangle(m, (r * ss, 0), ((w - r) * ss, h * ss - 1), 255, -1)
+    cv2.circle(m, (r * ss, r * ss), r * ss, 255, -1, cv2.LINE_AA)
+    cv2.circle(m, ((w - r) * ss, r * ss), r * ss, 255, -1, cv2.LINE_AA)
+    m = cv2.resize(m.astype(np.float32) / 255, (w, h), interpolation=cv2.INTER_AREA)
+    x0, y0 = cx - w / 2, y - h / 2
+    add_sprite(F, cx, y, w * 0.55, GOLD, 0.18)
+    ST.blend(F, m, x0, y0, GOLD, 1.0)
+    tx.draw(F, cx, y + size * 0.36, INK, 1.0, align="center")
+    return h
+
+
+def headline(F, y, badge_size=88, title_size=132, q_size=48, gap=None):
+    """7 分钟看懂 / Transformer / 「它」指的是谁？"""
+    h = badge(F, "7 分钟看懂", W / 2, y, badge_size)
+    ty = y + h / 2 + title_size * 1.02
+    ST.punch(F, "Transformer", W / 2, ty, 10.0, 0.0, size=title_size, wght=800, tracking=0.0)
+    ST.add_sprite(F, W / 2, ty - title_size * 0.35, title_size * 2.4, GOLD, 0.05)
+    qy = ty + q_size * 1.9
+    ST.punch(F, "「它」指的是谁？", W / 2, qy, 10.0, 0.0, size=q_size, wght=700, gold=(1,))
+    return qy
 
 
 def scene(F, ground, y1, y2, s_cat=340, s_table=280, size=76):
@@ -77,11 +105,9 @@ def scene(F, ground, y1, y2, s_cat=340, s_table=280, size=76):
 
 def cover():
     F = canvas()
-    add_sprite(F, W / 2, 820, 440, GOLD, 0.08)
-    headline(F, 360)
-    zh("AI 是怎么读懂这句话的？", 46, 600, 0.08).draw(F, W / 2, 470, IVORY, 0.9, align="center")
-    scene(F, 950, 1120, 1232)
-    zh("7 分钟看懂 Transformer", 46, 700, 0.06).draw(F, W / 2, 1395, GOLD, 1.0, align="center")
+    add_sprite(F, W / 2, 860, 440, GOLD, 0.07)
+    headline(F, 300)
+    scene(F, 1050, 1215, 1327)
     caps("ATTENTION IS ALL YOU NEED   ·   2017", 20, 0.4).draw(F, W / 2, 1450, DIM, 1.0, align="center")
     finish(F, "cover-9x16.png")
 
@@ -89,12 +115,10 @@ def cover():
 def portrait():
     ST.E.H = 1440                     # the engine clips drawing to its frame size
     F = canvas(1440, seed=5)
-    add_sprite(F, W / 2, 640, 400, GOLD, 0.08)
-    headline(F, 220, size=104)
-    zh("AI 是怎么读懂这句话的？", 42, 600, 0.08).draw(F, W / 2, 320, IVORY, 0.9, align="center")
-    scene(F, 770, 935, 1043, s_cat=320, s_table=265, size=72)
-    zh("7 分钟看懂 Transformer", 44, 700, 0.06).draw(F, W / 2, 1200, GOLD, 1.0, align="center")
-    caps("ATTENTION IS ALL YOU NEED   ·   2017", 19, 0.4).draw(F, W / 2, 1252, DIM, 1.0, align="center")
+    add_sprite(F, W / 2, 700, 400, GOLD, 0.07)
+    headline(F, 160, badge_size=80, title_size=120, q_size=44)
+    scene(F, 855, 1015, 1118, s_cat=300, s_table=250, size=70)
+    caps("ATTENTION IS ALL YOU NEED   ·   2017", 19, 0.4).draw(F, W / 2, 1245, DIM, 1.0, align="center")
     finish(F, "poster-3x4.png")
     ST.E.H = H
 
