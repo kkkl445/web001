@@ -408,14 +408,18 @@ def sun(F, t, a):
     mu = np.sqrt(np.clip(1 - r ** 2, 0, 1))
     g1 = np.roll(n1, int(t * 6), 1)[:h, :w]
     g2 = np.roll(n2, -int(t * 3), 0)[:h, :w]
-    edge = np.clip((1 - r) * R0 / 2.0, 0, 1)
-    I = (0.25 + 0.75 * mu ** 0.6) * (0.9 + 0.12 * (0.55 * g1 + 0.45 * g2)) * edge
+    edge = np.clip((1 - r) * R0 / 3.0, 0, 1).astype(np.float32)
+    mu = np.sqrt(np.clip(1 - np.minimum(r, 1) ** 2, 0, 1))
+    I = (0.42 + 0.58 * mu ** 0.6) * (0.9 + 0.12 * (0.55 * g1 + 0.45 * g2))
     col = palette(I, [0, 0.3, 0.62, 0.85, 1.0], [(0, 0, 0), (0.45, 0.1, 0.02), (0.92, 0.42, 0.1),
                                                    (1.0, 0.72, 0.36), (1.0, 0.93, 0.78)])
     cor = np.clip(r - 1, 0, None)
-    corona = (np.exp(-cor * R0 / 10) * 0.35 + np.exp(-cor * R0 / 60) * 0.18 + np.exp(-cor * R0 / 220) * 0.08) * (r >= 1)
-    col += corona[..., None] * np.array([1.0, 0.6, 0.25], np.float32)
-    F += cv2.resize(col, (W, H), interpolation=cv2.INTER_LINEAR) * 0.72 * a
+    corona = (np.exp(-cor * R0 / 8) * 0.12 + np.exp(-cor * R0 / 60) * 0.12 + np.exp(-cor * R0 / 220) * 0.07)
+    corona = (corona * (1 - edge))[..., None] * np.array([1.0, 0.6, 0.25], np.float32)
+    disc = cv2.resize(edge, (W, H), interpolation=cv2.INTER_LINEAR)[..., None]
+    F *= 1 - disc * a
+    F += cv2.resize(col, (W, H), interpolation=cv2.INTER_LINEAR) * disc * 0.72 * a
+    F += cv2.resize(corona, (W, H), interpolation=cv2.INTER_LINEAR) * 0.72 * a
 
 
 def _stm_field():
