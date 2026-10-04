@@ -30,9 +30,9 @@ CHORDS = {
 CD, HK, SK, SQ, CO, HD, OR, LN, MD, AF, EN = (START[k] for k in ("cold", "hook", "sky", "sequential", "core", "heads",
                                                                   "order", "learn", "mind", "after", "ending"))
 PLAN = [(0.0, "Dm9"), (CD + TL.CO_L2, "Bbmaj9"), (CD + TL.CO_L3, "A7sus4"),
-        (HK, "Fmaj9"), (HK + TL.H_BARS, "Dm9"), (HK + TL.H_CHAT, "Bbmaj9"), (HK + 13.4, "C69"),
+        (HK, "Bbmaj9"), (HK + 5.0, "C69"),
         (HK + TL.H_PLATE, "Fmaj9"), (HK + TL.H_SWAP, "Dm9"), (HK + TL.H_TURN, "Gm9"), (HK + TL.H_TITLE, "Fmaj9"),
-        (HK + 35.0, "C69"),
+        (HK + TL.H_TITLE + 3.2, "C69"),
         (SK, "Dm9"), (SK + TL.S_STAR, "Bbmaj9"), (SK + 15.0, "Fmaj9"), (SK + TL.S_KING, "Am7"), (SK + 26.0, "Gm9"),
         (SK + TL.S_APPLE, "Bbmaj7#11"), (SK + TL.S_IT, "A7sus4"), (SK + TL.S_PULL, "Dm9"),
         (SQ, "Dm9"), (SQ + 5.8, "Bbmaj7#11"), (SQ + 11.0, "Gm9"), (SQ + 16.4, "A7sus4"), (SQ + 22.0, "Dm9"),
@@ -144,12 +144,14 @@ def score():
             for k in range(8):
                 A.place(drm, hat(0.08 * vel * (k + 1) / 8), t1 - beat * (8 - k) / 4, pan=0.3)
 
-    # --- cold open: three hits and a rush
+    # --- cold open: the question lands, the candidates pop, the claim, the promise, a rush
     c0 = CD
     A.place(fx, A.boom(1.1), c0 + TL.CO_FORM)
     for k, m in enumerate((38, 50, 57, 62, 65, 69, 74)):
         note(m, c0 + TL.CO_FORM + 0.04 * k, 0.46)
     A.place(fx, A.thud(0.6), c0 + TL.CO_L1)
+    for k, m in enumerate((72, 69, 65)):
+        A.place(plk, A.pluck(m, 0.34 - 0.05 * k), c0 + TL.CO_L1 + 0.15 + 0.16 * k, pan=-0.3 + 0.2 * k)
     A.place(fx, A.boom(0.8), c0 + TL.CO_L2)
     A.place(bel, A.bell(81, 0.5), c0 + TL.CO_L2 + 0.05, pan=0.2)
     A.place(fx, A.boom(0.9), c0 + TL.CO_L3)
@@ -158,15 +160,10 @@ def score():
     groove(c0 + TL.CO_L1, c0 + TL.CO_GO, 0.8, bpm=100, hats=True, bass=False)
     A.place(fx, A.riser(1.0, 0.7), c0 + TL.CO_GO)
 
-    # --- hook: the game, the chat, 它, the turn, the title
+    # --- hook: the chat, 它, the turn, the title
     h = HK
-    for k in range(13):
-        A.place(tick, A.blip(int(rng.choice([84, 86, 88, 91])), 0.1), h + TL.H_TYPE + k / 9.0, pan=-0.3 + 0.05 * k)
-    A.place(bel, A.bell(74, 0.25, ratio=2.0, dur=3.0), h + 0.5, pan=0.3)
-    for k, m in enumerate((72, 69, 65, 64, 62)):
-        A.place(plk, A.pluck(m, 0.3 - 0.04 * k), h + TL.H_BARS + 0.13 * k, pan=-0.3 + 0.15 * k)
     groove(h + TL.H_CHAT + 0.6, h + TL.H_PLATE - 0.2, 0.7, bpm=100)
-    for tt in np.arange(h + TL.H_CHAT + 0.9, h + 17.4, 0.22):
+    for tt in np.arange(h + TL.H_CHAT + 0.9, h + TL.H_PLATE - 0.6, 0.22):
         if rng.random() < 0.6:
             A.place(tick, A.blip(int(rng.choice([88, 91, 93])), 0.05), tt, pan=rng.uniform(-0.5, 0.5))
     A.place(bel, A.bell(79, 0.35, ratio=2.0, dur=3.0), h + TL.H_PLATE + 0.3, pan=-0.4)
@@ -188,7 +185,7 @@ def score():
     for k, m in enumerate((41, 53, 57, 60, 64, 67, 72)):
         note(m, h + TL.H_TITLE + 0.07 * k, 0.44)
     A.place(bel, A.bell(81, 0.6), h + TL.H_TITLE + 0.5, pan=-0.3)
-    A.place(fx, A.riser(1.2, 0.5), h + 36.9)
+    A.place(fx, A.riser(1.2, 0.5), h + TL.H_TITLE + 5.1)
 
     # --- sky: the warp, numbers, a star, the sky of meaning
     k0 = SK
@@ -446,8 +443,8 @@ def main():
     dry = pad + sub + pno + A.pingpong(pno) * 0.18 + bel + fx + tick + plk + shim + drm
     send = pad * 0.3 + pno * 0.5 + bel * 0.8 + tick * 0.6 + plk * 0.6 + shim * 0.6 + fx * 0.25 + drm * 0.08
     mix = A.hp(dry + A.reverb(send, ir) * 0.55, 28)
-    arc = A.automation([(0, -1), (CD + 5.6, 0), (HK, -6), (HK + TL.H_CHAT, -4), (HK + TL.H_PLATE, -5),
-                        (HK + TL.H_TITLE, 0), (HK + 36.0, -2), (SK, -2), (SK + 3, -5), (SK + 45, -4), (SQ, -5),
+    arc = A.automation([(0, -1), (CD + 5.6, 0), (HK, -4), (HK + TL.H_PLATE, -5),
+                        (HK + TL.H_TITLE, 0), (HK + TL.H_TITLE + 4.2, -2), (SK, -2), (SK + 3, -5), (SK + 45, -4), (SQ, -5),
                         (SQ + 22, -3), (CO, -4), (CO + 26, -4), (CO + TL.C_KNOW, 0), (CO + TL.C_FORMULA, 0),
                         (CO + 80, -3), (CO + TL.C_GRID, 0), (HD, -3), (HD + TL.HEADS_ALL, 0), (OR, -3), (OR + 12, -4),
                         (LN, -4), (LN + TL.L_COUNT, -2), (LN + TL.L_COUNT + 3, 0), (LN + 40, -3),

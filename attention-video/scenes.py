@@ -208,18 +208,30 @@ def ai_label(F, a=1.0, y=250):
 
 
 def cold(F, t, g, fi):
-    """Three seconds to earn the next three minutes."""
-    a = 1 - smooth(ramp(t, TL.CO_GO + 0.6, 0.4))
-    formula_big(F, CX, 720, t, TL.CO_FORM, a, scale=1.0 - 0.12 * smooth(ramp(t, TL.CO_L1, 0.8)))
-    shock(F, CX, 720, t - TL.CO_FORM, a, size=1.1)
-    punch(F, "如今的 AI 聊天机器人，", CX, 990, t, TL.CO_L1, TL.CO_L3, size=52, wght=500, a=a)
-    punch(F, "几乎都建立在这一行公式上。", CX, 1130, t, TL.CO_L2, TL.CO_L3, size=62, wght=700, a=a, gold=(6, 7, 8, 9, 10))
-    shock(F, CX, 1105, t - TL.CO_L2, 0.6 * a, size=0.6)
-    punch(F, "今天，把它拆开来看。", CX, 1150, t, TL.CO_L3, None, size=70, wght=700, a=a, gold=(5, 6, 7, 8))
-    cam(t, 6, extra=kick(t - TL.CO_FORM) + kick(t - TL.CO_L2) + kick(t - TL.CO_L3), y=760,
+    """The puzzle is on screen from the very first frame: no logo, no build-up."""
+    a = 1 - smooth(ramp(t, TL.CO_L3 - 0.05, 0.3))
+    punch(F, "下一个字是什么？", CX, 450, t, TL.CO_FORM - 0.12, size=86, wght=800, a=a, gold=(2, 3))
+    zh("小猫没有跳上桌子，", 70, 500, 0.12).draw(F, CX, 640, IVORY, a, align="center")
+    fill = smooth(ramp(t, TL.CO_L2 - 0.5, 0.25))
+    P.guess_line(F, "因为它太", CX, 750, 70, a=a, t=t, fill="累", fill_a=fill)
+    if TL.CO_L2 - 0.5 <= t < TL.CO_L2 + 0.5:
+        add_sprite(F, CX + 175, 725, 70, GOLD, 0.6 * math.exp(-(t - TL.CO_L2 + 0.5) * 4) * a)
+    ba = a * smooth(ramp(t, TL.CO_L1, 0.25))
+    P.bars(F, GUESS[:3], 330, 905, 520, a=ba, grow=ramp(t, TL.CO_L1 + 0.15, 2.0), row=92, size=54, hot=0,
+           note="（示意）")
+    punch(F, "AI 每说一句话，都在玩这个游戏。", CX, 1268, t, TL.CO_L2, size=56, wght=700, a=a,
+          gold=(11, 12, 13, 14))
+    shock(F, CX, 1245, t - TL.CO_L2, 0.5 * a, size=0.6)
+    # the promise, then straight through it into the film
+    b = 1 - smooth(ramp(t, TL.CO_GO + 0.6, 0.4))
+    punch(F, "7 分钟，", CX, 700, t, TL.CO_L3, size=110, wght=800, a=b, gold=(0,))
+    punch(F, "看懂它怎么猜。", CX, 860, t, TL.CO_L3 + 0.25, size=96, wght=800, a=b, gold=(2, 3, 4, 5))
+    shock(F, CX, 760, t - TL.CO_L3, b, size=1.1)
+    cam(t, 6, extra=kick(t - TL.CO_L1) * 0.5 + kick(t - TL.CO_L2) + kick(t - TL.CO_L3), y=820,
         out_at=TL.CO_GO, out_len=1.0)
-    subtitles(F, t, [(TL.CO_L1, TL.CO_L3 - 0.1, "", "Today's AI chatbots are almost all built on this one line."),
-                     (TL.CO_L3, 5.8, "", "Today, let's take it apart.")])
+    subtitles(F, t, [(0.0, TL.CO_L2 - 0.1, "", "What's the next word?"),
+                     (TL.CO_L2, TL.CO_L3 - 0.1, "", "Every sentence an AI writes is this game."),
+                     (TL.CO_L3, 5.8, "", "In 7 minutes: how it guesses.")])
 
 
 # ------------------------------------------------------------------ hook ---
@@ -228,25 +240,11 @@ GUESS = [("累", .41), ("高", .23), ("小", .09), ("胖", .06), ("困", .05)]
 
 
 def hook(F, t, g, fi):
-    # the game: what comes next?
-    ga = window(t, 0.0, TL.H_CHAT - 0.1, 0.3, 0.6)
-    if ga > 0.003:
-        def typed(n):
-            return ease_out(ramp(t, TL.H_TYPE + n / 9.0, 0.25))
-        tx = zh("小猫没有跳上桌子，", 72, 400, 0.12)
-        x0 = CX - tx.width / 2
-        for i, (m, dx, dy) in enumerate(tx.items):
-            al = ga * typed(i)
-            if al > 0.003:
-                blend(F, m, x0 + dx, 560 + dy, IVORY, al)
-        P.guess_line(F, "因为它太", CX, 690, 72, a=ga, typed=lambda n: typed(n + 9), t=t)
-        P.bars(F, GUESS, 300, 880, 520, a=ga * smooth(ramp(t, TL.H_BARS, 0.4)), grow=ramp(t, TL.H_BARS, 1.6),
-               row=84, size=46, hot=0, note="（示意）")
     # the chat: a whole answer, one guessed character at a time
-    ca = window(t, TL.H_CHAT, TL.H_PLATE - 0.1, 0.5, 0.6)
+    ca = window(t, TL.H_CHAT, TL.H_PLATE - 0.1, 0.4, 0.6)
     if ca > 0.003:
-        u = ramp(t, TL.H_CHAT + 0.8, 8.6)
-        n = len(P.CHAT_A) * (0.55 * u + 0.45 * u ** 2.2)
+        u = ramp(t, TL.H_CHAT + 0.6, 8.4)
+        n = len(P.CHAT_A) * (0.75 * u + 0.25 * u ** 2)
         P.chat(F, P.CHAT_Q, P.CHAT_A, n, t, a=ca, y0=420, cand_y=1090)
     # who is 「它」? the star-atlas plate
     pa = window(t, TL.H_PLATE, TL.H_TURN - 0.1, 0.6, 0.8)
@@ -266,23 +264,28 @@ def hook(F, t, g, fi):
             sx, sy = P.OPEN.centers[7]
             q = (t - TL.H_SWAP) / 0.9
             add_sprite(F, sx, sy, 40 + 60 * q, GOLD, 0.7 * math.sin(math.pi * q) * pa)
-    subtitles(F, t, [(0.5, 4.0, "先来玩个游戏：下一个字是什么？", "A game first: what comes next?"),
-                     (4.2, 8.0, "你大概会猜「累」，或者「高」。", "You'd probably guess 'tired', or 'tall'."),
-                     (8.4, 13.0, "AI 聊天机器人做的事，说穿了就是这个游戏：猜下一个字。",
-                      "All an AI chatbot really does is play this game: guess the next word."),
-                     (13.4, 17.6, "猜一个，接上，再猜下一个——一整段回答，就是这样写出来的。",
+    subtitles(F, t, [(0.3, 4.6, "看它回答问题：每个字出现之前，它都在猜。",
+                      "Watch it answer: before every character appears, it is guessing."),
+                     (5.0, 9.2, "猜一个，接上，再猜下一个——一整段回答，就是这样写出来的。",
                       "Guess one, add it, guess again - that is how a whole answer is written."),
-                     (18.0, 22.4, "可要猜得准，它得先弄明白：这里的「它」，到底是谁？",
+                     (9.6, 14.0, "可要猜得准，它得先弄明白：这里的「它」，到底是谁？",
                       "But to guess well, it must first work out who 'it' is."),
-                     (22.8, 27.2, "换一个字，「它」就换了对象。你一眼就知道。",
+                     (14.4, 18.8, "换一个字，「它」就换了对象。你一眼就知道。",
                       "Change one word and 'it' changes too. You see it at a glance.")])
     statement(F, "而让机器也学会这件事的，", CX, 720, t, TL.H_TURN, TL.H_TITLE - 0.5, size=58, cps=11)
     statement(F, "是 2017 年的一篇论文。", CX, 820, t, TL.H_TURN + 1.1, TL.H_TITLE - 0.5, size=58, cps=11,
               gold={2, 3, 4, 5})
-    title_card(F, t, TL.H_TITLE, 36.7)
+    title_card(F, t, TL.H_TITLE, TL.H_TITLE + 4.4)
     shock(F, CX, 760, t - TL.H_TITLE, 0.8)
-    cam(t, 38, extra=kick(t - TL.H_IT) * 0.6 + kick(t - TL.H_SWAP) * 0.6 + kick(t - TL.H_TITLE),
-        out_at=37.0, out_len=1.0)
+    # the open loop: the question the last third answers
+    punch(F, "看到最后：只会猜字的 AI，", CX, 1110, t, TL.H_TITLE + 2.4, size=46, wght=600,
+          a=1 - smooth(ramp(t, TL.H_TITLE + 4.6, 0.5)))
+    punch(F, "为什么会变聪明？", CX, 1190, t, TL.H_TITLE + 2.9, size=62, wght=800, gold=(0, 1, 2, 3, 4, 5, 6),
+          a=1 - smooth(ramp(t, TL.H_TITLE + 4.6, 0.5)))
+    # close in on the chat (phone-sized text), then pull back for the plate
+    zc = 1 - smooth(ramp(t, TL.H_PLATE - 0.7, 1.0))
+    cam(t, 29.6, extra=0.18 * zc + kick(t - TL.H_IT) * 0.6 + kick(t - TL.H_SWAP) * 0.6 + kick(t - TL.H_TITLE)
+        + kick(t - TL.H_TITLE - 2.9) * 0.5, y=860 - 80 * zc, out_at=28.6, out_len=1.0)
 
 
 # ------------------------------------------------------------------- sky ---

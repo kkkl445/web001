@@ -46,7 +46,7 @@ def frame(fi):
     S.SCENE_FUNCS[name](F, lt, g, fi)
     F = _apply_camera(F)
     ST.flush_subtitles(F)
-    fade = min(1.0, g / 0.12) * min(1.0, (DURATION - g) / 1.8)
+    fade = min(1.0, (DURATION - g) / 1.8)          # no fade-in: frame 0 must already hold the question
     if fade < 1:
         F *= max(fade, 0.0)
     return finalize(F, _state["vig"], _state["grain"][fi % len(_state["grain"])] * fade)

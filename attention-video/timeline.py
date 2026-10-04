@@ -11,8 +11,8 @@ generalising (概括) is what minds have always done.  Emergence."""
 FPS = 30
 
 SCENES = [
-    ("cold", 6),         # cold open: the formula lands; every AI chatbot runs on this line
-    ("hook", 38),        # 猜下一个字; the chat; 它是谁; title
+    ("cold", 6),         # cold open: the next-word puzzle is on screen from the first frame
+    ("hook", 29.6),      # the chat; 它是谁; title
     ("sky", 46),         # words are numbers, numbers are stars
     ("sequential", 30),  # the old way: the telephone game
     ("core", 98),        # Q, K, V; the dot product; softmax; the mix; the formula; the grid
@@ -31,13 +31,13 @@ for _n, _d in SCENES:
     _t += _d
 DURATION = _t
 
-# cold open (local seconds)
-CO_FORM, CO_L1, CO_L2, CO_L3, CO_GO = 0.15, 1.0, 2.6, 3.9, 5.0
+# cold open (local seconds): the question is there at frame 0; candidates pop; the claim; the promise
+CO_FORM, CO_L1, CO_L2, CO_L3, CO_GO = 0.0, 1.0, 2.6, 3.9, 5.0
 
 # hook (local seconds)
-H_TYPE, H_BARS, H_CHAT, H_PLATE = 0.3, 4.2, 8.4, 18.0
-H_HOP, H_LIE, H_IT, H_LINK, H_SWAP, H_RE = 19.2, 19.8, 20.0, 20.4, 23.0, 23.6
-H_TURN, H_TITLE = 27.6, 31.8
+H_CHAT, H_PLATE = 0.0, 9.6
+H_HOP, H_LIE, H_IT, H_LINK, H_SWAP, H_RE = 10.8, 11.4, 11.6, 12.0, 14.6, 15.2
+H_TURN, H_TITLE = 19.2, 23.4
 
 # sky
 S_NUM, S_COUNT, S_STAR, S_GROUPS, S_KING, S_APPLE, S_IT, S_PULL = 0.4, 4.2, 9.8, 10.6, 19.4, 30.0, 35.4, 39.8

@@ -47,9 +47,9 @@ def make_background(seed=4):
     rng = np.random.default_rng(seed)
     yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
     F = np.empty((H, W, 3), np.float32)
-    F[:] = rgb("030407")
+    F[:] = rgb("070b14")
     d = ((xx - CX) / 760) ** 2 + ((yy - CY) / 1000) ** 2
-    F += (rgb("0b1322") - rgb("030407")) * np.exp(-d * 1.4)[..., None]
+    F += (rgb("142240") - rgb("070b14")) * np.exp(-d * 1.4)[..., None]
     stars = np.zeros((H, W), np.float32)
     n = 900
     sx, sy = rng.uniform(0, W, n), rng.uniform(0, H, n)
@@ -59,7 +59,7 @@ def make_background(seed=4):
                    cv2.LINE_AA, 4)
     F += stars[..., None] * np.array([0.85, 0.9, 1.0], np.float32)
     r = np.sqrt(((xx - W / 2) / (W / 2)) ** 2 + ((yy - H / 2) / (H / 2)) ** 2)
-    vig = (1 - 0.62 * np.clip((r - 0.45) / 0.95, 0, 1) ** 1.5).astype(np.float32)
+    vig = (1 - 0.45 * np.clip((r - 0.45) / 0.95, 0, 1) ** 1.5).astype(np.float32)
     tw = dict(x=rng.uniform(0, W, 70), y=rng.uniform(0, H, 70), f=rng.uniform(0.15, 0.6, 70),
               p=rng.uniform(0, 6.28, 70), a=rng.uniform(0.1, 0.35, 70))
     return F, vig, tw
