@@ -216,7 +216,6 @@ def cold(F, t, g, fi):
     punch(F, "几乎都建立在这一行公式上。", CX, 1130, t, TL.CO_L2, TL.CO_L3, size=62, wght=700, a=a, gold=(6, 7, 8, 9, 10))
     shock(F, CX, 1105, t - TL.CO_L2, 0.6 * a, size=0.6)
     punch(F, "今天，把它拆开来看。", CX, 1150, t, TL.CO_L3, None, size=70, wght=700, a=a, gold=(5, 6, 7, 8))
-    ai_label(F, a)
     cam(t, 6, extra=kick(t - TL.CO_FORM) + kick(t - TL.CO_L2) + kick(t - TL.CO_L3), y=760,
         out_at=TL.CO_GO, out_len=1.0)
     subtitles(F, t, [(TL.CO_L1, TL.CO_L3 - 0.1, "", "Today's AI chatbots are almost all built on this one line."),
